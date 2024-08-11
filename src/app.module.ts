@@ -9,6 +9,8 @@ import { LessonsModule } from './lessons/lessons.module';
 import { UsersModule } from './users/users.module';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
+import { AuthController } from './auth/auth.controller';
+import { UsersController } from './users/users.controller';
 
 @Module({
   imports: [
@@ -23,7 +25,7 @@ import { AppController } from './app.controller';
       isGlobal: true,
     }),
   ],
-  controllers: [AppController],
+  controllers: [AppController, AuthController, UsersController],
 
   providers: [AppService],
 })

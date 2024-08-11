@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import { Profile, Strategy } from 'passport-facebook';
+import { Strategy, Profile } from 'passport-facebook';
+import { Injectable } from '@nestjs/common';
+import { log } from 'console';
 
 @Injectable()
 export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
@@ -8,9 +9,9 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
     super({
       clientID: process.env.FACEBOOK_APP_ID,
       clientSecret: process.env.FACEBOOK_APP_SECRET,
-      callbackURL: 'http://localhost:3000/auth/facebook/callback',
-      scope: 'email',
-      profileFields: ['emails', 'name'],
+      callbackURL: `${process.env.BASE_URL}/auth/facebook/callback`,
+      scope: ['email'], // Ensure 'email' is a valid scope
+      profileFields: ['id', 'emails', 'name'], // Ensure these fields are correct
     });
   }
 
@@ -20,16 +21,15 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
     profile: Profile,
     done: (err: any, user: any, info?: any) => void,
   ): Promise<any> {
-    const { name, emails } = profile;
+    const { id, emails, name } = profile;
     const user = {
-      email: emails[0].value,
+      facebookId: id,
+      email: emails ? emails[0].value : null,
       firstName: name.givenName,
       lastName: name.familyName,
     };
-    const payload = {
-      user,
-      accessToken,
-    };
-    done(null, payload);
+
+    log(user);
+    done(null, user);
   }
 }

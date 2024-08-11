@@ -4,23 +4,21 @@
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
-
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id            Int            @id @default(autoincrement())
+  id            String         @id @default(uuid())
   email         String         @unique
   password      String
-  name          String
+  username      String         @default("user")
   role          Role           @default(USER)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
@@ -65,7 +63,7 @@ model Category {
 
 model Subscription {
   id        Int      @id @default(autoincrement())
-  userId    Int
+  userId    String
   courseId  Int
   startDate DateTime @default(now())
   endDate   DateTime
@@ -77,7 +75,7 @@ model Subscription {
 
 model Payment {
   id        Int           @id @default(autoincrement())
-  userId    Int
+  userId    String
   amount    Float
   status    PaymentStatus
   user      User          @relation(fields: [userId], references: [id])
@@ -87,7 +85,7 @@ model Payment {
 
 model Progress {
   id        Int      @id @default(autoincrement())
-  userId    Int
+  userId    String
   lessonId  Int
   completed Boolean  @default(false)
   user      User     @relation(fields: [userId], references: [id])

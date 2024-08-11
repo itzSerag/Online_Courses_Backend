@@ -6,24 +6,29 @@ import {
   Get,
   Req,
   HttpStatus,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
-import { loginDto, signUpDto } from './dto/index';
+import { LoginDto, SignUpDto } from './dto';
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('login')
-  async login(@Body() body: loginDto) {
+  async login(@Body() body: LoginDto) {
     const user = await this.authService.validateUser(body.email, body.password);
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid email or password credentials');
+    }
     return this.authService.login(user);
   }
 
-  @Post('register')
-  async register(@Body() body: signUpDto) {
-    return this.authService.register(body.email, body.password, body.username);
+  @Post('signup')
+  async signup(@Body() body: SignUpDto): Promise<any> {
+    return this.authService.signup(body);
   }
 
   @Get('facebook')
@@ -35,7 +40,14 @@ export class AuthController {
   @Get('facebook/callback')
   @UseGuards(AuthGuard('facebook'))
   async facebookLoginCallback(@Req() req): Promise<any> {
-    return this.authService.login(req.user);
+    const user = await this.authService.findOrCreateOAuthUser(req.user);
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const jwt = await this.authService.login(user);
+    return { access_token: jwt.access_token };
   }
 
   @Get('google')
@@ -44,7 +56,12 @@ export class AuthController {
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  googleAuthRedirect(@Req() req) {
-    return this.authService.login(req.user);
+  async googleAuthRedirect(@Req() req): Promise<any> {
+    if (!req.user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    const user = await this.authService.findOrCreateOAuthUser(req.user);
+    const jwt = await this.authService.login(user);
+    return { access_token: jwt.access_token };
   }
 }
