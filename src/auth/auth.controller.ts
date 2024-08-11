@@ -47,7 +47,8 @@ export class AuthController {
     }
 
     const jwt = await this.authService.login(user);
-    return { access_token: jwt.access_token };
+    delete user.password;
+    return { access_token: jwt.access_token, user };
   }
 
   @Get('google')
@@ -62,6 +63,6 @@ export class AuthController {
     }
     const user = await this.authService.findOrCreateOAuthUser(req.user);
     const jwt = await this.authService.login(user);
-    return { access_token: jwt.access_token };
+    return { access_token: jwt.access_token, user };
   }
 }

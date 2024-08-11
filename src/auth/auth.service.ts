@@ -36,9 +36,13 @@ export class AuthService {
     email: string;
     role: 'USER' | 'ADMIN';
     id: string;
-  }): Promise<{ access_token: string }> {
+    username: string;
+  }): Promise<any> {
     const payload = { email: user.email, sub: user.id, roles: user.role };
     return {
+      email: user.email,
+      role: user.role,
+      username: user.username,
       access_token: this.jwtService.sign(payload),
     };
   }
@@ -49,8 +53,8 @@ export class AuthService {
       user = await this.userService.createUser({
         email: profile.email,
         username: profile.firstName,
+        // Use Facebook ID as password -- gonna be hashed also
         password: profile.facebookId,
-        // Add other fields as necessary
       });
     }
     return user;
