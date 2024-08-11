@@ -1,0 +1,108 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id            Int            @id @default(autoincrement())
+  email         String         @unique
+  password      String
+  name          String
+  role          Role           @default(USER)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  subscriptions Subscription[]
+  payments      Payment[]
+  Progress      Progress[]
+}
+
+model Course {
+  id            Int            @id @default(autoincrement())
+  title         String
+  description   String
+  price         Float
+  categoryId    Int
+  category      Category       @relation(fields: [categoryId], references: [id])
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  subscriptions Subscription[]
+  lessons       Lesson[]
+  coverImage    String? // URL to the cover image
+}
+
+model Lesson {
+  id        Int        @id @default(autoincrement())
+  title     String
+  content   String // This could be a rich text description or a URL to a video file
+  order     Int // To maintain lesson order within a course
+  courseId  Int
+  course    Course     @relation(fields: [courseId], references: [id])
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  Progress  Progress[]
+}
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String
+  courses   Course[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Subscription {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  courseId  Int
+  startDate DateTime @default(now())
+  endDate   DateTime
+  user      User     @relation(fields: [userId], references: [id])
+  course    Course   @relation(fields: [courseId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Payment {
+  id        Int           @id @default(autoincrement())
+  userId    Int
+  amount    Float
+  status    PaymentStatus
+  user      User          @relation(fields: [userId], references: [id])
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model Progress {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  lessonId  Int
+  completed Boolean  @default(false)
+  user      User     @relation(fields: [userId], references: [id])
+  lesson    Lesson   @relation(fields: [lessonId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
