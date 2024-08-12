@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from 'src/users/users.service';
 import { SignUpDto } from './dto';
+import { log } from 'console';
 
 @Injectable()
 export class AuthService {
@@ -16,6 +17,7 @@ export class AuthService {
     if (user && (await bcrypt.compare(password, user.password))) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password, ...result } = user;
+
       return result;
     }
     return null;
@@ -32,31 +34,32 @@ export class AuthService {
     return this.login(newUser);
   }
 
-  async login(user: {
-    email: string;
-    role: 'USER' | 'ADMIN';
-    id: string;
-    username: string;
-  }): Promise<any> {
+  async login(user: any): Promise<any> {
     const payload = { email: user.email, sub: user.id, roles: user.role };
+    delete user.password;
     return {
-      email: user.email,
-      role: user.role,
-      username: user.username,
       access_token: this.jwtService.sign(payload),
+      user: {
+        ...user,
+      },
     };
   }
 
   async findOrCreateOAuthUser(profile: any) {
     let user = await this.userService.findByEmail(profile.email);
+
+    log(profile);
+    log(user);
     if (!user) {
       user = await this.userService.createUser({
         email: profile.email,
         username: profile.firstName,
         // Use Facebook ID as password -- gonna be hashed also
-        password: profile.facebookId,
+        password: profile.facebookId || profile.googleId,
       });
     }
+
+    delete user.password;
     return user;
   }
 }

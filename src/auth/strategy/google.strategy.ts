@@ -9,7 +9,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       callbackURL: `${process.env.BASE_URL}/auth/google/callback`,
-      scope: ['email', 'profile', 'id'],
+      scope: ['email', 'profile'],
     });
   }
 
@@ -21,7 +21,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   ): Promise<any> {
     const { id, emails, name } = profile;
     const user = {
-      google_id: id,
+      googleId: id,
       email: emails[0].value,
       firstName: name.givenName,
       lastName: name.familyName,

@@ -17,6 +17,7 @@ export class CategoriesController {
   constructor(private categoriesService: CategoriesService) {}
 
   @Get()
+  @UseGuards(AdminGuard)
   getAllCategories() {
     return this.categoriesService.getAllCategories();
   }

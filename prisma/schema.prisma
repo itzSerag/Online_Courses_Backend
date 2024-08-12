@@ -15,10 +15,11 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(uuid())
+  id            Int         @id @default(autoincrement())
   email         String         @unique
   password      String
   username      String         @default("user")
+  strategy      String         @default("local")
   role          Role           @default(USER)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
@@ -63,7 +64,7 @@ model Category {
 
 model Subscription {
   id        Int      @id @default(autoincrement())
-  userId    String
+  userId    Int
   courseId  Int
   startDate DateTime @default(now())
   endDate   DateTime
@@ -75,7 +76,7 @@ model Subscription {
 
 model Payment {
   id        Int           @id @default(autoincrement())
-  userId    String
+  userId    Int
   amount    Float
   status    PaymentStatus
   user      User          @relation(fields: [userId], references: [id])
@@ -85,7 +86,7 @@ model Payment {
 
 model Progress {
   id        Int      @id @default(autoincrement())
-  userId    String
+  userId    Int
   lessonId  Int
   completed Boolean  @default(false)
   user      User     @relation(fields: [userId], references: [id])

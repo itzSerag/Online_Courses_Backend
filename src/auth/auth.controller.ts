@@ -63,6 +63,8 @@ export class AuthController {
     }
     const user = await this.authService.findOrCreateOAuthUser(req.user);
     const jwt = await this.authService.login(user);
+
+
     return { access_token: jwt.access_token, user };
   }
 }

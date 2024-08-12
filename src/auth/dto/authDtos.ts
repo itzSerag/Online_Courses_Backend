@@ -15,6 +15,7 @@ export class SignUpDto {
   password: string;
 
   role?: 'USER' | 'ADMIN';
+
 }
 
 export class LoginDto {
