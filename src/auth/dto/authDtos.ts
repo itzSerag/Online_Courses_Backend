@@ -5,7 +5,6 @@ export class SignUpDto {
   @IsNotEmpty()
   username: string;
 
-  @IsString()
   @IsNotEmpty()
   @IsEmail()
   email: string;
@@ -15,7 +14,6 @@ export class SignUpDto {
   password: string;
 
   role?: 'USER' | 'ADMIN';
-
 }
 
 export class LoginDto {
@@ -26,4 +24,17 @@ export class LoginDto {
   @IsString()
   @IsNotEmpty()
   password: string;
+}
+
+export class UpdateUserDto {
+  email?: string;
+  password?: string;
+  username?: string;
+  // Other updatable fields
+}
+
+export class PayLoad {
+  email: string;
+  sub: number;
+  roles: string;
 }

@@ -2,8 +2,8 @@ import { Injectable, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from 'src/users/users.service';
-import { SignUpDto } from './dto';
-import { log } from 'console';
+import { PayLoad, SignUpDto } from './dto';
+import { UserWithoutPassword } from 'src/users/types';
 
 @Injectable()
 export class AuthService {
@@ -12,9 +12,13 @@ export class AuthService {
     private readonly userService: UsersService,
   ) {}
 
-  async validateUser(email: string, password: string): Promise<any> {
+  async validateUser(
+    email: string,
+    password: string,
+  ): Promise<UserWithoutPassword> {
     const user = await this.userService.findByEmail(email);
     if (user && (await bcrypt.compare(password, user.password))) {
+      /// destructuring the password from the user object
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password, ...result } = user;
 
@@ -31,25 +35,40 @@ export class AuthService {
     }
 
     const newUser = await this.userService.createUser(user);
-    return this.login(newUser);
+
+    const payload: PayLoad = {
+      email: newUser.email,
+      sub: newUser.id,
+      roles: newUser.role,
+    };
+
+    const jwt = await this.generateToken(payload);
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, ...userWithoutPassword } = newUser;
+
+    return {
+      access_token: jwt,
+      user: userWithoutPassword,
+    };
   }
 
   async login(user: any): Promise<any> {
-    const payload = { email: user.email, sub: user.id, roles: user.role };
-    delete user.password;
+    const payload: PayLoad = {
+      email: user.email,
+      sub: user.id,
+      roles: user.role,
+    };
+
     return {
-      access_token: this.jwtService.sign(payload),
-      user: {
-        ...user,
-      },
+      access_token: await this.generateToken(payload),
+      user,
     };
   }
 
   async findOrCreateOAuthUser(profile: any) {
     let user = await this.userService.findByEmail(profile.email);
 
-    log(profile);
-    log(user);
     if (!user) {
       user = await this.userService.createUser({
         email: profile.email,
@@ -58,8 +77,10 @@ export class AuthService {
         password: profile.facebookId || profile.googleId,
       });
     }
-
-    delete user.password;
     return user;
+  }
+
+  async generateToken(user: PayLoad) {
+    return this.jwtService.sign(user);
   }
 }

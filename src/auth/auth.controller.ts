@@ -21,7 +21,7 @@ export class AuthController {
     const user = await this.authService.validateUser(body.email, body.password);
 
     if (!user) {
-      throw new UnauthorizedException('Invalid email or password credentials');
+      throw new UnauthorizedException('Invalid credentials');
     }
     return this.authService.login(user);
   }
@@ -47,7 +47,6 @@ export class AuthController {
     }
 
     const jwt = await this.authService.login(user);
-    delete user.password;
     return { access_token: jwt.access_token, user };
   }
 
@@ -63,7 +62,6 @@ export class AuthController {
     }
     const user = await this.authService.findOrCreateOAuthUser(req.user);
     const jwt = await this.authService.login(user);
-
 
     return { access_token: jwt.access_token, user };
   }
