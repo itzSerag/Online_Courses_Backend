@@ -12,7 +12,7 @@ async function bootstrap() {
     methods: ['PUT', 'GET', 'PATCH', 'DELETE'],
   });
 
-  // app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api');
 
   app.useGlobalPipes(
     new ValidationPipe({
