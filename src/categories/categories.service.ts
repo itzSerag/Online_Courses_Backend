@@ -11,6 +11,14 @@ export class CategoriesService {
     });
   }
 
+  // get a category by name
+  async getCategoryByName(name: string) {
+    return this.prisma.category.findUnique({
+      where: { name },
+      include: { courses: true },
+    });
+  }
+
   async getAllCategories() {
     return this.prisma.category.findMany();
   }
@@ -26,7 +34,6 @@ export class CategoriesService {
     return this.prisma.category.update({
       where: { id },
       data: { name },
-      
     });
   }
 

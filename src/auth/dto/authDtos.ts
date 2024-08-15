@@ -12,6 +12,8 @@ export class SignUpDto {
   @IsString()
   @IsNotEmpty()
   password: string;
+  
+  strategy?: 'local' | 'facebook' | 'google';
 
   role?: 'USER' | 'ADMIN';
 }

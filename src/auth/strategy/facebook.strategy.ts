@@ -1,7 +1,6 @@
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, Profile } from 'passport-facebook';
 import { Injectable } from '@nestjs/common';
-import { log } from 'console';
 
 @Injectable()
 export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
@@ -27,9 +26,10 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
       email: emails ? emails[0].value : null,
       firstName: name.givenName,
       lastName: name.familyName,
+      provider: profile.provider,
     };
 
-    log(user);
+    
     done(null, user);
   }
 }

@@ -4,6 +4,7 @@ import * as bcrypt from 'bcrypt';
 import { UsersService } from 'src/users/users.service';
 import { PayLoad, SignUpDto } from './dto';
 import { UserWithoutPassword } from 'src/users/types';
+import { log } from 'console';
 
 @Injectable()
 export class AuthService {
@@ -66,8 +67,15 @@ export class AuthService {
     };
   }
 
+  
+
+  // if the strategy of the user is different from what we have in the database
+  // we stop the user from logging in and telling this email is already in use
+
   async findOrCreateOAuthUser(profile: any) {
     let user = await this.userService.findByEmail(profile.email);
+
+    log('0--USER' + user);
 
     if (!user) {
       user = await this.userService.createUser({
@@ -75,7 +83,10 @@ export class AuthService {
         username: profile.firstName,
         // Use Facebook ID as password -- gonna be hashed also
         password: profile.facebookId || profile.googleId,
+        strategy: profile.provider,
       });
+    } else if (user.strategy !== profile.provider) {
+      throw new ConflictException('Email already in use');
     }
     return user;
   }

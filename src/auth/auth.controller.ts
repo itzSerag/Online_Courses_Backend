@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
-import { LoginDto, SignUpDto } from './dto';
+import { LoginDto, PayLoad, SignUpDto } from './dto';
 
 @Controller('auth')
 export class AuthController {
@@ -46,8 +46,14 @@ export class AuthController {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const jwt = await this.authService.login(user);
-    return { access_token: jwt.access_token, user };
+    const payload: PayLoad = {
+      email: user.email,
+      sub: user.id,
+      roles: user.role,
+    };
+
+    const jwt = await this.authService.generateToken(payload);
+    return { access_token: jwt, user, provider: req.user.provider };
   }
 
   @Get('google')
@@ -57,12 +63,27 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   async googleAuthRedirect(@Req() req): Promise<any> {
+
+
     if (!req.user) {
       throw new UnauthorizedException('Invalid credentials');
     }
-    const user = await this.authService.findOrCreateOAuthUser(req.user);
-    const jwt = await this.authService.login(user);
 
-    return { access_token: jwt.access_token, user };
+    
+    const user = await this.authService.findOrCreateOAuthUser(req.user);
+
+    const payload: PayLoad = {
+      email: user.email,
+      sub: user.id,
+      roles: user.role,
+    };
+
+    const jwt = await this.authService.generateToken(payload);
+
+    return {
+      access_token: jwt,
+      user,
+      provider: req.user.provider,
+    };
   }
 }
