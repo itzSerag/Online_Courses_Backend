@@ -1,4 +1,8 @@
-import { Injectable, ConflictException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from 'src/users/users.service';
@@ -25,8 +29,19 @@ export class AuthService {
   ): Promise<UserWithoutPassword | null> {
     const user = await this.prisma.user.findUnique({ where: { email } });
 
+    const payload: PayLoad = {
+      email: user.email,
+      roles: user.role,
+      sub: user.id,
+    };
+
+    const jwt = await this.generateToken(payload);
+
     if (!user.isVerified) {
-      throw new ForbiddenException("Account not verified please enter the otp")
+      throw new ForbiddenException({
+        message: 'Account not verified please enter the otp',
+        access_token: jwt,
+      });
     }
 
     if (user && (await bcrypt.compare(password, user.password))) {
@@ -79,7 +94,6 @@ export class AuthService {
   }
 
   async login(user: any): Promise<any> {
-
     const payload: PayLoad = {
       email: user.email,
       sub: user.id,
@@ -128,6 +142,6 @@ export class AuthService {
       isVerified: true,
     });
 
-    return { message: 'OTP is correct' };
+    return { message: 'OTP is correct', user: user };
   }
 }
