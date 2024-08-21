@@ -11,6 +11,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { LoginDto, PayLoad, SignUpDto } from './dto';
+import { JwtAuthGuard } from './guard';
 
 @Controller('auth')
 export class AuthController {
@@ -18,11 +19,14 @@ export class AuthController {
 
   @Post('login')
   async login(@Body() body: LoginDto) {
+    
+
     const user = await this.authService.validateUser(body.email, body.password);
 
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
+
     return this.authService.login(user);
   }
 
@@ -63,13 +67,10 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   async googleAuthRedirect(@Req() req): Promise<any> {
-
-
     if (!req.user) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    
     const user = await this.authService.findOrCreateOAuthUser(req.user);
 
     const payload: PayLoad = {
@@ -85,5 +86,15 @@ export class AuthController {
       user,
       provider: req.user.provider,
     };
+  }
+
+  @Post('verify-otp')
+  @UseGuards(JwtAuthGuard)
+  async verifyOtp(@Body('otp') otp: string, @Req() req) {
+
+
+    const result = await this.authService.verifyOtp(otp, req.user);
+
+    return result;
   }
 }

@@ -16,6 +16,8 @@ export class SignUpDto {
   strategy?: 'local' | 'facebook' | 'google';
 
   role?: 'USER' | 'ADMIN';
+
+  isVerified?: boolean;
 }
 
 export class LoginDto {

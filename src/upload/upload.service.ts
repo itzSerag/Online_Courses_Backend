@@ -1,27 +1,29 @@
 import { Injectable } from '@nestjs/common';
-import * as AWS from 'aws-sdk';
+import fetch from 'node-fetch';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class UploadService {
-  private s3: AWS.S3;
+  async uploadToBunny(filePath: string): Promise<void> {
+    const fileStream = fs.createReadStream(filePath);
+    const apiKey = 'BUNNY_NET_API_KEY';
+    const storageZone = 'STORAGE_ZONE_NAME';
 
-  constructor() {
-    this.s3 = new AWS.S3({
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    });
-  }
+    const response = await fetch(
+      `https://storage.bunnycdn.com/${storageZone}/${path.basename(filePath)}`,
+      {
+        method: 'PUT',
+        headers: {
+          AccessKey: apiKey,
+          'Content-Type': 'application/octet-stream',
+        },
+        body: fileStream,
+      },
+    );
 
-  async uploadFile(file: Express.Multer.File, key: string): Promise<string> {
-    const params = {
-      Bucket: process.env.AWS_S3_BUCKET_NAME,
-      Key: key,
-      Body: file.buffer,
-      ACL: 'public-read',
-      ContentType: file.mimetype,
-    };
-
-    const result = await this.s3.upload(params).promise();
-    return result.Location;
+    if (!response.ok) {
+      throw new Error(`Upload failed: ${response.statusText}`);
+    }
   }
 }

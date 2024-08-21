@@ -48,10 +48,10 @@ export class CoursesController {
   ) {
     let coverImageUrl;
     if (file) {
-      coverImageUrl = await this.uploadService.uploadFile(
-        file,
-        `courses/${file.originalname}`,
-      );
+      // coverImageUrl = await this.uploadService.uploadFile(
+      //   file,
+      //   `courses/${file.originalname}`,
+      // );
     }
     return this.coursesService.createCourse({
       ...courseData,
@@ -75,10 +75,10 @@ export class CoursesController {
   ) {
     let coverImageUrl;
     if (file) {
-      coverImageUrl = await this.uploadService.uploadFile(
-        file,
-        `courses/${file.originalname}`,
-      );
+      // coverImageUrl = await this.uploadService.uploadFile(
+      //   file,
+      //   `courses/${file.originalname}`,
+      // );
     }
     return this.coursesService.updateCourse(parseInt(id), {
       ...courseData,

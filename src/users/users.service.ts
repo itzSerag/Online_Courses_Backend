@@ -21,10 +21,8 @@ export class UsersService {
         },
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // const { password, ...userWithoutPassword } = user;
-
       return user;
+
     } catch (err) {
       log('Error creating user:', err);
       throw new Error('User creation failed');
@@ -71,7 +69,7 @@ export class UsersService {
 
   async updateUser(
     id: number,
-    data: Partial<SignUpDto>,
+    data: Partial<UserWithId>,
   ): Promise<UserWithoutPassword> {
     try {
       // If updating password, hash it before saving
@@ -81,7 +79,7 @@ export class UsersService {
 
       const user = await this.prisma.user.update({
         where: { id },
-        data,
+        data  ,
       });
 
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -108,5 +106,12 @@ export class UsersService {
     const { password, ...userWithoutPassword } = deletedUser;
     log('Deleted user' + userWithoutPassword);
     return userWithoutPassword;
+  }
+
+  async verifyUser(email: string): Promise<UserWithId> {
+    return this.prisma.user.update({
+      where: { email },
+      data: { isVerified: true },
+    });
   }
 }

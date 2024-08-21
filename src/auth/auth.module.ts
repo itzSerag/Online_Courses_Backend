@@ -9,6 +9,8 @@ import { JwtModule } from '@nestjs/jwt';
 import { JwtAuthGuard } from './guard/jwt.auth.guard';
 import { GoogleStrategy } from './strategy/google.strategy';
 import { FacebookStrategy } from './strategy/facebook.strategy';
+import { OtpService } from './auth.otp.service';
+import { EmailService } from './auth.email.service';
 
 @Module({
   imports: [
@@ -26,6 +28,8 @@ import { FacebookStrategy } from './strategy/facebook.strategy';
     JwtAuthGuard,
     GoogleStrategy,
     FacebookStrategy,
+    OtpService,
+    EmailService,
   ],
   exports: [AuthService, JwtAuthGuard],
 })
