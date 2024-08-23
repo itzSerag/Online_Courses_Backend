@@ -22,7 +22,6 @@ export class UsersService {
       });
 
       return user;
-
     } catch (err) {
       log('Error creating user:', err);
       throw new Error('User creation failed');
@@ -32,10 +31,7 @@ export class UsersService {
   async findByEmail(email: string): Promise<UserWithId | null> {
     const user = await this.prisma.user.findUnique({ where: { email } });
 
-    if (user) {
-      return user;
-    }
-    return null;
+    return user;
   }
 
   async findById(id: number): Promise<UserWithoutPassword | null> {
@@ -79,7 +75,7 @@ export class UsersService {
 
       const user = await this.prisma.user.update({
         where: { id },
-        data  ,
+        data,
       });
 
       // eslint-disable-next-line @typescript-eslint/no-unused-vars

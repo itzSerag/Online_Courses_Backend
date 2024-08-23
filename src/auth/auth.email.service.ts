@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
+import * as AWS from 'aws-sdk';
 
 @Injectable()
 export class EmailService {
@@ -7,23 +8,21 @@ export class EmailService {
 
   constructor() {
     this.transporter = nodemailer.createTransport({
-      service: 'smtp-', 
-
-      auth: {
-        user: process.env.EMAIL_USER, // Your email
-        pass: process.env.EMAIL_PASS, // Your email password or app password
-      },
-    });   
+      SES: new AWS.SES({
+        apiVersion: '2010-12-01',
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+        region: process.env.AWS_REGION,
+      }),
+    });
   }
 
-  async sendOtp(email: string, otp: string) {
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: 'Your OTP Code',
-      text: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
-    };
-
-    await this.transporter.sendMail(mailOptions);
+  async sendEmail(to: string, subject: string) {
+    return await this.transporter.sendMail({
+      from: 'seragmahmoud62@gmail.com', // Replace with your verified SES email
+      to,
+      subject,
+      html: '<h1> Hello </h1>',
+    });
   }
 }

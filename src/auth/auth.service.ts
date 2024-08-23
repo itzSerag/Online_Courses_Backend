@@ -10,8 +10,6 @@ import { PayLoad, SignUpDto } from './dto';
 import { UserWithoutPassword } from 'src/users/types';
 import { EmailService } from './auth.email.service';
 import { OtpService } from './auth.otp.service';
-import { log } from 'console';
-import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class AuthService {
@@ -20,14 +18,13 @@ export class AuthService {
     private readonly userService: UsersService,
     private readonly emailService: EmailService,
     private readonly otpService: OtpService,
-    private prisma: PrismaService,
   ) {}
 
   async validateUser(
     email: string,
     password: string,
   ): Promise<UserWithoutPassword | null> {
-    const user = await this.prisma.user.findUnique({ where: { email } });
+    const user = await this.userService.findByEmail(email);
 
     const payload: PayLoad = {
       email: user.email,
@@ -52,6 +49,7 @@ export class AuthService {
     return null;
   }
 
+  /// move to UTILS
   async generateOTP(email: string) {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     await this.otpService.createOtp(email, otp);
@@ -62,12 +60,11 @@ export class AuthService {
     const existingUser = await this.userService.findByEmail(user.email);
     if (existingUser) {
       /// conflict exception for duplicate user
-      throw new ConflictException('User already exists');
+      throw new ConflictException('User with this email already exists');
     }
 
-    log('USER from signup function -- User created\n' + JSON.stringify(user));
-
     const newUser = await this.userService.createUser(user);
+    await this.emailService.sendEmail(user.email, 'hellothere');
 
     const payload: PayLoad = {
       email: newUser.email,
@@ -80,10 +77,8 @@ export class AuthService {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...userWithoutPassword } = newUser;
 
-    // create otp and send it to the user
-    const otp = await this.generateOTP(user.email);
-    // make an otp record in the database
-    await this.otpService.createOtp(user.email, otp);
+    /// generate and create an otp record
+    await this.generateOTP(user.email);
 
     // await this.emailService.sendOtp(user.email, otp);
 
@@ -119,7 +114,9 @@ export class AuthService {
         isVerified: true,
       });
     } else if (user.strategy !== profile.provider) {
-      throw new ConflictException('Email already in use');
+      throw new ConflictException(
+        'Email already in use with another sign-in/up method',
+      );
     }
     return user;
   }

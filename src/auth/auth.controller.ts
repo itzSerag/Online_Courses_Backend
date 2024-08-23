@@ -19,8 +19,6 @@ export class AuthController {
 
   @Post('login')
   async login(@Body() body: LoginDto) {
-    
-
     const user = await this.authService.validateUser(body.email, body.password);
 
     if (!user) {
@@ -91,8 +89,6 @@ export class AuthController {
   @Post('verify-otp')
   @UseGuards(JwtAuthGuard)
   async verifyOtp(@Body('otp') otp: string, @Req() req) {
-
-
     const result = await this.authService.verifyOtp(otp, req.user);
 
     return result;
