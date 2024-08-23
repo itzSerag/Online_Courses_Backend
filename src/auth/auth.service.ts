@@ -26,6 +26,10 @@ export class AuthService {
   ): Promise<UserWithoutPassword | null> {
     const user = await this.userService.findByEmail(email);
 
+    if (!user) {
+      return null;
+    }
+    
     const payload: PayLoad = {
       email: user.email,
       roles: user.role,
@@ -78,9 +82,10 @@ export class AuthService {
     const { password, ...userWithoutPassword } = newUser;
 
     /// generate and create an otp record
-    await this.generateOTP(user.email);
+    const otp = await this.generateOTP(user.email);
 
-    // await this.emailService.sendOtp(user.email, otp);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const emailResponse = await this.emailService.sendEmail(user.email, otp);
 
     return {
       access_token: jwt,
