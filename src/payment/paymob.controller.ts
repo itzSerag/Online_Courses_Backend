@@ -52,8 +52,8 @@ export class PaymobController {
         street: 'dumy',
         building: 'dumy',
         phone_number: paymentIntention.phone_number,
-        city: 'dumy',
-        country: 'dumy',
+        city: paymentIntention.city,
+        country: paymentIntention.country,
         email: user.email,
         floor: 'dumy',
         state: 'dumy',
@@ -62,7 +62,7 @@ export class PaymobController {
 
     try {
       // Process payment and pass userId to the service method
-      const clientURL = await this.paymobService.processOrder(data);
+      const clientURL = await this.paymobService.processOrder(data, user.id);
 
       return { success: true, clientURL };
     } catch (error) {

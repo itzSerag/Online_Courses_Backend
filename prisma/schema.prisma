@@ -100,6 +100,8 @@ model Order {
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId       Int
   paymentStatus PaymentStatus @default(PENDING)
+  paymentDate  DateTime?      @default(now())
+  paymentId    String?
   
 }
 
