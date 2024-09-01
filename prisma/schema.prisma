@@ -1,7 +1,5 @@
-
 generator client {
   provider = "prisma-client-js"
-  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -11,77 +9,111 @@ datasource db {
 }
 
 model User {
-  id            Int            @id @default(autoincrement())
-  email         String         @unique
-  password      String
-  username      String         @default("user")
-  strategy      String         @default("local")
-  role          Role           @default(USER)
-  isVerified     Boolean        @default(false)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  subscriptions Subscription[]
-  payments      Payment[]
+  id           Int            @id @default(autoincrement())
+  email        String         @unique
+  firstName    String
+  lastName     String
+  password     String
+  phoneNumber  String?        @default("+2011111111")
+  country      String?        @default("EG")
+  city         String?        @default("Cairo")
+  strategy     String         @default("local")
+  role         Role           @default(USER)
+  isVerified   Boolean        @default(false)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  levels       Level[]
+  userProgress UserProgress[]
+  userTasks    UserTask[]
+  orders       Order[]        // user payments
 }
 
-model Course {
-  id            Int            @id @default(autoincrement())
-  title         String
-  description   String
-  price         Float
-  categoryId    Int
-  category      Category       @relation(fields: [categoryId], references: [id])
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  subscriptions Subscription[]
-  lessons       Lesson[]
-  coverImage    String? // URL to the cover image
+model Level {
+  id          Int       @id @default(autoincrement())
+  name        String
+  stages      Stage[]   
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
+  paid        Boolean   @default(false)
+  paymentDate DateTime?
 }
 
-model Lesson {
-  id          Int           @id @default(autoincrement())
-  title       String
-  content     String // This could be a rich text description or a URL to a video file
-  order       Int // To maintain lesson order within a course
-  courseId    Int
-  course      Course        @relation(fields: [courseId], references: [id])
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+model Stage {
+  id           Int            @id @default(autoincrement())
+  name         String
+  level        Level          @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  levelId      Int
+  days         Day[]
+  userProgress UserProgress[]
 }
 
-model Category {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
-  courses   Course[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model Day {
+  id           Int            @id @default(autoincrement())
+  stage        Stage          @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  stageId      Int
+  dayNumber    Int
+  tasks        Task[]
+  userProgress UserProgress[]
 }
 
-model Subscription {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  courseId  Int
-  startDate DateTime @default(now())
-  endDate   DateTime
-  user      User     @relation(fields: [userId], references: [id])
-  course    Course   @relation(fields: [courseId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model Task {
+  id        Int        @id @default(autoincrement())
+  name      String
+  content   String
+  day       Day        @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  dayId     Int
+  userTasks UserTask[]
 }
 
-model Payment {
-  id        Int           @id @default(autoincrement())
-  userId    Int
-  amount    Float
-  status    PaymentStatus
-  user      User          @relation(fields: [userId], references: [id])
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+model UserProgress {
+  id          Int      @id @default(autoincrement())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
+  stage       Stage    @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  stageId     Int
+  day         Day      @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  dayId       Int
+  completed   Boolean  @default(false)
+  completedAt DateTime @default(now())
+
+  @@unique([userId, stageId, dayId])
+}
+
+model UserTask {
+  id          Int      @id @default(autoincrement())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId      Int
+  completed   Boolean  @default(false)
+  completedAt DateTime @default(now())
+
+  @@unique([userId, taskId])
+}
+
+model Order {
+  id           Int           @id @default(autoincrement())
+  items        OrderItem[]
+  amountCents  Int
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       Int
+  paymentStatus PaymentStatus @default(PENDING)
+  
+}
+
+model OrderItem {
+  id          Int        @id @default(autoincrement())
+  name        Level_Name
+  amountCents Int
+  order       Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId     Int
 }
 
 model OTP {
   id        Int      @id @default(autoincrement())
-  email     String    @unique
+  email     String   @unique
   otp       String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -96,4 +128,13 @@ enum PaymentStatus {
   PENDING
   COMPLETED
   FAILED
+}
+
+enum Level_Name {
+  LEVEL_A1
+  LEVEL_A2
+  LEVEL_B1
+  LEVEL_B2
+  LEVEL_C1
+  LEVEL_C2
 }

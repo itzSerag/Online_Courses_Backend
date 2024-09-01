@@ -19,6 +19,6 @@ export class AdminGuard implements CanActivate {
       return true;
     }
 
-    throw new UnauthorizedException(' access denied -- route for ADMIN');
+    throw new UnauthorizedException(' access denied');
   }
 }

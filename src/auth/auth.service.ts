@@ -29,7 +29,7 @@ export class AuthService {
     if (!user) {
       return null;
     }
-    
+
     const payload: PayLoad = {
       email: user.email,
       roles: user.role,
@@ -68,7 +68,6 @@ export class AuthService {
     }
 
     const newUser = await this.userService.createUser(user);
-    await this.emailService.sendEmail(user.email, 'hellothere');
 
     const payload: PayLoad = {
       email: newUser.email,
@@ -112,7 +111,8 @@ export class AuthService {
     if (!user) {
       user = await this.userService.createUser({
         email: profile.email,
-        username: profile.firstName,
+        firstName: profile.firstName,
+        lastName: profile.lastName,
         // Use Facebook ID as password -- gonna be hashed also
         password: profile.facebookId || profile.googleId,
         strategy: profile.provider,
@@ -139,6 +139,7 @@ export class AuthService {
       throw new ConflictException('OTP is incorrect');
     }
 
+    // PROMISE ALL
     await this.otpService.deleteOtp(user.email);
     await this.userService.updateUser(userRecord.id, {
       isVerified: true,

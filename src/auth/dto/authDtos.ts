@@ -3,7 +3,11 @@ import { IsString, IsNotEmpty, IsEmail } from 'class-validator';
 export class SignUpDto {
   @IsString()
   @IsNotEmpty()
-  username: string;
+  firstName: string;
+
+  @IsString()
+  @IsNotEmpty()
+  lastName: string;
 
   @IsNotEmpty()
   @IsEmail()
@@ -12,7 +16,7 @@ export class SignUpDto {
   @IsString()
   @IsNotEmpty()
   password: string;
-  
+
   strategy?: 'local' | 'facebook' | 'google';
 
   role?: 'USER' | 'ADMIN';
