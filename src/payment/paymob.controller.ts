@@ -12,11 +12,16 @@ import { PaymentRequestDTO } from './dto/orderData';
 import { UserWithId } from 'src/users/types'; // Assuming you have a UserWithId type that includes user.id
 import { log } from 'console';
 import * as fs from 'fs';
+import path from 'path';
 
 @UseGuards(AuthGuard('jwt'))
 @Controller('payment')
 export class PaymobController {
-  constructor(private readonly paymobService: PaymobService) {}
+  public filePath: string;
+
+  constructor(private readonly paymobService: PaymobService) {
+    this.filePath = path.join(__dirname, 'courses-data.json');
+  }
 
   @Post('process-payment')
   async processPayment(
@@ -24,8 +29,6 @@ export class PaymobController {
     @Req() req: any,
   ) {
     const user: UserWithId = req.user; // Assuming the user object contains the id
-
-    // Parse the integration ID from string to number
     const integration_id = parseInt(process.env.PAYMOB_INTEGRATION_ID, 10);
 
     if (isNaN(integration_id)) {
@@ -35,9 +38,7 @@ export class PaymobController {
     log(paymentIntention);
 
     // read the json object and pass it to the service method
-    const levelsData = JSON.parse(
-      fs.readFileSync('src/courses-data.json', 'utf-8'),
-    );
+    const levelsData = JSON.parse(fs.readFileSync(this.filePath, 'utf-8'));
 
     const data = {
       amount: levelsData[paymentIntention.item_name].price,
