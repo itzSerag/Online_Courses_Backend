@@ -18,10 +18,8 @@ export class EmailService {
   }
 
   async sendEmail(to: string, otp: string) {
-    log('Sending email to:', to + ' ' + this.configService.get('FROM_EMAIL'));
-
     const params = {
-      Source: this.configService.get('FROM_EMAIL'),
+      Source: 'seragmahmoud62@gmail.com',
       Destination: {
         ToAddresses: [to],
       },
