@@ -1,21 +1,10 @@
-import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { Level_Name } from '@prisma/client';
+import { IsNotEmpty, IsString } from 'class-validator';
 
 export class PaymentRequestDTO {
-  @IsNumber()
-  @IsNotEmpty()
-  amount: number;
-
   @IsString()
   @IsNotEmpty()
-  currency: string;
-
-  @IsString()
-  @IsNotEmpty()
-  item_name: string;
-
-  @IsString()
-  @IsNotEmpty()
-  item_description: string;
+  item_name: Level_Name;
 
   @IsString()
   @IsNotEmpty()

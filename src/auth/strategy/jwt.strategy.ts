@@ -14,8 +14,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
   async validate(payload: PayLoad) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-
+    
     const user = await this.userService.findByEmail(payload.email);
     const result = user ? user : null;
 

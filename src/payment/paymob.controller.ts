@@ -11,6 +11,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { PaymentRequestDTO } from './dto/orderData';
 import { UserWithId } from 'src/users/types'; // Assuming you have a UserWithId type that includes user.id
 import { log } from 'console';
+import * as fs from 'fs';
 
 @UseGuards(AuthGuard('jwt'))
 @Controller('payment')
@@ -32,16 +33,22 @@ export class PaymobController {
     }
 
     log(paymentIntention);
+
+    // read the json object and pass it to the service method
+    const levelsData = JSON.parse(
+      fs.readFileSync('src/courses-data.json', 'utf-8'),
+    );
+
     const data = {
-      amount: paymentIntention.amount,
+      amount: levelsData[paymentIntention.item_name].price,
       currency: 'EGP',
       payment_methods: [integration_id], ////Enter your integration id
 
       items: [
         {
           name: paymentIntention.item_name,
-          amount: paymentIntention.amount,
-          description: paymentIntention.item_description,
+          amount: levelsData[paymentIntention.item_name].price,
+          description: levelsData[paymentIntention.item_name].description,
           quantity: 1,
         },
       ],
@@ -83,6 +90,18 @@ export class PaymobController {
       // return { success: true, refundResponse };
     } catch (error) {
       throw new BadRequestException(`Refund failed: ${error.message}`);
+    }
+  }
+
+  // i want to handle the callback from paymob and pass it to services to add the data to the database
+  @Post('callback')
+  async callback(@Body() data: any) {
+    try {
+      // Implement callback logic here
+      // const callbackResponse = await this.paymobService.callback(data);
+      // return { success: true, callbackResponse };
+    } catch (error) {
+      throw new BadRequestException(`Callback failed: ${error.message}`);
     }
   }
 }
