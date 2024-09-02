@@ -5,6 +5,7 @@ import {
   UseGuards,
   Req,
   BadRequestException,
+  Get,
 } from '@nestjs/common';
 import { PaymobService } from './paymob.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -106,7 +107,7 @@ export class PaymobController {
     }
   }
 
-  @Post('callback')
+  @Get('callback')
   async callback(@Body() data: any) {
     try {
       // Implement callback logic here
