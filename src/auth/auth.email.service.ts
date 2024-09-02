@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as AWS from 'aws-sdk';
+import { log } from 'console';
 
 @Injectable()
 export class EmailService {
@@ -17,6 +18,8 @@ export class EmailService {
   }
 
   async sendEmail(to: string, otp: string) {
+    log('Sending email to:', to + ' ' + this.configService.get('FROM_EMAIL'));
+
     const params = {
       Source: this.configService.get('FROM_EMAIL'),
       Destination: {
