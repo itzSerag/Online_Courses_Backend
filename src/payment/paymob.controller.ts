@@ -12,7 +12,7 @@ import { PaymentRequestDTO } from './dto/orderData';
 import { UserWithId } from 'src/users/types'; // Assuming you have a UserWithId type that includes user.id
 import { log } from 'console';
 import * as fs from 'fs';
-import path from 'path';
+import * as path from 'path'; // Correct import for the path module
 
 @UseGuards(AuthGuard('jwt'))
 @Controller('payment')
@@ -20,6 +20,7 @@ export class PaymobController {
   public filePath: string;
 
   constructor(private readonly paymobService: PaymobService) {
+    // Correct file path usage
     this.filePath = path.join(__dirname, '../../src/courses-data.json');
   }
 
@@ -40,16 +41,27 @@ export class PaymobController {
     // read the json object and pass it to the service method
     const levelsData = JSON.parse(fs.readFileSync(this.filePath, 'utf-8'));
 
+    // Find the level by its name
+    const level = levelsData.Levels.find(
+      (lvl) => lvl.name === paymentIntention.item_name,
+    );
+
+    if (!level) {
+      throw new BadRequestException('Invalid item name');
+    }
+
+    log(level);
+
     const data = {
-      amount: levelsData[paymentIntention.item_name].price,
+      amount: level.price,
       currency: 'EGP',
       payment_methods: [integration_id], ////Enter your integration id
 
       items: [
         {
           name: paymentIntention.item_name,
-          amount: levelsData[paymentIntention.item_name].price,
-          description: levelsData[paymentIntention.item_name].description,
+          amount: level.price,
+          description: level.description,
           quantity: 1,
         },
       ],
@@ -94,7 +106,6 @@ export class PaymobController {
     }
   }
 
-  // i want to handle the callback from paymob and pass it to services to add the data to the database
   @Post('callback')
   async callback(@Body() data: any) {
     try {
