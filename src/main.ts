@@ -7,7 +7,7 @@ async function bootstrap() {
 
   // CORS
   app.enableCors({
-    origin: 'https://englishome.netlify.app',
+    origin: true,
 
     methods: ['PUT', 'GET', 'PATCH', 'DELETE'],
   });
