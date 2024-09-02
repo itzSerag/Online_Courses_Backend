@@ -20,7 +20,7 @@ export class PaymobController {
   public filePath: string;
 
   constructor(private readonly paymobService: PaymobService) {
-    this.filePath = path.join(__dirname, 'courses-data.json');
+    this.filePath = path.join(__dirname, '../../src/courses-data.json');
   }
 
   @Post('process-payment')
