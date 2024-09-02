@@ -1,10 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import * as AWS from 'aws-sdk';
 
 @Injectable()
 export class EmailService {
-
-
   private AWS_SES_CONFIG = {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
@@ -13,26 +12,23 @@ export class EmailService {
 
   private AWS_SES = new AWS.SES(this.AWS_SES_CONFIG);
 
-  constructor() {
-
+  constructor(private configService: ConfigService) {
     this.AWS_SES = new AWS.SES(this.AWS_SES_CONFIG);
-    
   }
 
   async sendEmail(to: string, otp: string) {
-    
     const params = {
-      Source : process.env.EMAIL_FROM,
+      Source: this.configService.get('FROM_EMAIL'),
       Destination: {
         ToAddresses: [to],
-        },
-      
+      },
+
       ReplyToAddresses: [],
-        Message: {
-          Body: {
-            Html: {
-              Charset: 'UTF-8',
-              Data: `<html>
+      Message: {
+        Body: {
+          Html: {
+            Charset: 'UTF-8',
+            Data: `<html>
               <head>
                 <style>
                   .container {
@@ -71,9 +67,7 @@ export class EmailService {
                   <div class="content">
                     <h1>Hi there!</h1>
                     <p>Your OTP is:</p>
-                    <p class="otp">${otp
-
-                    }</p>
+                    <p class="otp">${otp}</p>
 
                     <p>Thanks</p>
 
