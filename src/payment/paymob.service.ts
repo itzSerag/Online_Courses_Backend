@@ -1,6 +1,7 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service'; // assuming you have a PrismaService for database access
+import { PaymentStatus } from './types';
 
 @Injectable()
 export class PaymobService {
@@ -81,8 +82,6 @@ export class PaymobService {
 
       return clientURL;
     } catch (error) {
-
-      
       throw new HttpException(
         'Failed to process order',
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -90,18 +89,22 @@ export class PaymobService {
     }
   }
 
-  // // Handle payment completion callback
-  // async completeOrder(paymentId: string, status: PaymentStatus) {
-  //   try {
-  //     await this.prisma.order.updateMany({
-  //       where: { paymentId },
-  //       data: { paymentStatus: status },
-  //     });
-  //   } catch (error) {
-  //     throw new HttpException(
-  //       'Failed to complete order',
-  //       HttpStatus.INTERNAL_SERVER_ERROR,
-  //     );
-  //   }
-  // }
+  async handlePaymobCallback(orderId: number, success: boolean) {
+    try {
+      // Update the order in the database with payment status
+      await this.prisma.order.update({
+        where: { paymentId: orderId },
+        data: {
+          paymentStatus: success
+            ? PaymentStatus.COMPLETED
+            : PaymentStatus.FAILED,
+        },
+      });
+    } catch (error) {
+      throw new HttpException(
+        'Failed to process callback',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }

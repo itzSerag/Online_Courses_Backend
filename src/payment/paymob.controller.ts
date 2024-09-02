@@ -15,7 +15,6 @@ import { log } from 'console';
 import * as fs from 'fs';
 import * as path from 'path'; // Correct import for the path module
 
-@UseGuards(AuthGuard('jwt'))
 @Controller('payment')
 export class PaymobController {
   public filePath: string;
@@ -24,7 +23,7 @@ export class PaymobController {
     // Correct file path usage
     this.filePath = path.join(__dirname, '../../src/courses-data.json');
   }
-
+  @UseGuards(AuthGuard('jwt'))
   @Post('process-payment')
   async processPayment(
     @Body() paymentIntention: PaymentRequestDTO,
@@ -93,6 +92,7 @@ export class PaymobController {
     }
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Post('refund')
   async refundTransaction(
     @Body('transactionId') transactionId: string,
@@ -108,11 +108,13 @@ export class PaymobController {
   }
 
   @Get('callback')
-  async callback(@Body() data: any) {
+  async callback(@Req() data: any) {
     try {
-      // Implement callback logic here
-      // const callbackResponse = await this.paymobService.callback(data);
-      // return { success: true, callbackResponse };
+      
+      const { obj, success } = data;
+      const { id: orderId } = obj.order;
+
+      return this.paymobService.handlePaymobCallback(orderId, success);
     } catch (error) {
       throw new BadRequestException(`Callback failed: ${error.message}`);
     }
