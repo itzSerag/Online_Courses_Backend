@@ -55,7 +55,7 @@ export class PaymobController {
     const data = {
       amount: level.price,
       currency: 'EGP',
-      payment_methods: [integration_id], ////Enter your integration id
+      payment_methods: [integration_id],
 
       items: [
         {
@@ -80,6 +80,9 @@ export class PaymobController {
       },
     };
 
+    log(data);
+    log(user);
+
     try {
       // Process payment and pass userId to the service method
       const clientURL = await this.paymobService.processOrder(data, user.id);
@@ -92,25 +95,24 @@ export class PaymobController {
     }
   }
 
-  @UseGuards(AuthGuard('jwt'))
-  @Post('refund')
-  async refundTransaction(
-    @Body('transactionId') transactionId: string,
-    @Body('amountCents') amountCents: number,
-  ) {
-    try {
-      // Implement refund logic here
-      // const refundResponse = await this.paymobService.refund(transactionId, amountCents);
-      // return { success: true, refundResponse };
-    } catch (error) {
-      throw new BadRequestException(`Refund failed: ${error.message}`);
-    }
-  }
+  // @UseGuards(AuthGuard('jwt'))
+  // @Post('refund')
+  // async refundTransaction(
+  //   @Body('transactionId') transactionId: string,
+  //   @Body('amountCents') amountCents: number,
+  // ) {
+  //   try {
+  //     // Implement refund logic here
+  //     // const refundResponse = await this.paymobService.refund(transactionId, amountCents);
+  //     // return { success: true, refundResponse };
+  //   } catch (error) {
+  //     throw new BadRequestException(`Refund failed: ${error.message}`);
+  //   }
+  // }
 
   @Get('callback')
   async callback(@Req() data: any) {
     try {
-      
       const { obj, success } = data;
       const { id: orderId } = obj.order;
 

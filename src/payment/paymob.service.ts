@@ -1,7 +1,8 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service'; // assuming you have a PrismaService for database access
-import { PaymentStatus } from './types';
+import { PaymentRequest, PaymentStatus } from './types';
+import { log } from 'console';
 
 @Injectable()
 export class PaymobService {
@@ -25,7 +26,7 @@ export class PaymobService {
   }
 
   // Get Auth Token
-  async createIntention(paymentRequest: any) {
+  async createIntention(paymentRequest: PaymentRequest) {
     try {
       const res = await fetch('https://accept.paymob.com/v1/intention/', {
         method: 'POST',
@@ -55,20 +56,20 @@ export class PaymobService {
   }
 
   // Create Order
-  async processOrder(paymentRequest: any, userId: number): Promise<any> {
+  async processOrder(paymentRequest: PaymentRequest, userId: number) {
     try {
       const dataUserPaymentIntention =
         await this.createIntention(paymentRequest);
-      const paymentId = dataUserPaymentIntention.id;
       const clientSecretToken = dataUserPaymentIntention.client_secret;
       const clientURL = `https://accept.paymob.com/unifiedcheckout/?publicKey=${this.PAYMOB_PUBLIC_KEY}&clientSecret=${clientSecretToken}`;
+
+      log(clientURL);
 
       // Update the order in the database with payment ID and status
       await this.prisma.order.create({
         data: {
           userId,
-          paymentId,
-          paymentStatus: 'PENDING',
+          paymentStatus: PaymentStatus.PENDING,
           amountCents: paymentRequest.amount,
           items: {
             create: {
