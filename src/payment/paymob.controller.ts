@@ -14,6 +14,7 @@ import { UserWithId } from 'src/users/types'; // Assuming you have a UserWithId 
 import { log } from 'console';
 import * as fs from 'fs';
 import * as path from 'path'; // Correct import for the path module
+import { paymentCallback } from './types/callback';
 
 @Controller('payment')
 export class PaymobController {
@@ -113,8 +114,10 @@ export class PaymobController {
   @Get('callback')
   async callback(@Req() data: any) {
     try {
-      const { obj, success } = data;
-      const { id: orderId } = obj.order;
+      const paymentCallbackData: paymentCallback = data;
+
+      const success = paymentCallbackData.obj.success;
+      const orderId = paymentCallbackData.obj.order.id;
 
       return this.paymobService.handlePaymobCallback(orderId, success);
     } catch (error) {
