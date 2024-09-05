@@ -46,6 +46,7 @@ export class PaymobService {
       }
 
       const data = await res.json();
+
       return data;
     } catch (error) {
       throw new HttpException(
@@ -63,21 +64,13 @@ export class PaymobService {
       const clientSecretToken = dataUserPaymentIntention.client_secret;
       const clientURL = `https://accept.paymob.com/unifiedcheckout/?publicKey=${this.PAYMOB_PUBLIC_KEY}&clientSecret=${clientSecretToken}`;
 
-      log(clientURL);
-
-      // Update the order in the database with payment ID and status
       await this.prisma.order.create({
         data: {
-          userId,
-          paymentStatus: PaymentStatus.PENDING,
+          userId: userId,
           amountCents: paymentRequest.amount,
-          items: {
-            create: {
-              name: paymentRequest.items[0].name,
-              amountCents: paymentRequest.items[0].amount,
-            },
-          },
-          // Add any additional order fields here
+          paymentStatus: PaymentStatus.PENDING,
+          itemName: paymentRequest.items[0].name,
+          paymentId: null,
         },
       });
 
@@ -90,20 +83,110 @@ export class PaymobService {
     }
   }
 
-  async handlePaymobCallback(orderId: number, success: boolean) {
+  async handlePaymobCallback(
+    orderId: number,
+    success: boolean,
+    amount: number,
+    userEmail: string,
+  ) {
     try {
+      log('INSIDE CALLBACK HANDLER');
+
+      // Get user id from email
+      const user = await this.prisma.user.findUnique({
+        where: {
+          email: userEmail,
+        },
+      });
+
+      log('User:', user);
+
+      if (!user) {
+        throw new HttpException(
+          'User not found with the provided email',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
       // Update the order in the database with payment status
-      await this.prisma.order.update({
-        where: { paymentId: orderId },
+      const updatedOrder = await this.prisma.order.update({
+        where: {
+          userId_amountCents: {
+            userId: user.id,
+            amountCents: amount,
+          },
+        },
         data: {
           paymentStatus: success
             ? PaymentStatus.COMPLETED
             : PaymentStatus.FAILED,
+          paymentId: orderId.toString(),
         },
       });
+
+      if (!updatedOrder) {
+        throw new HttpException(
+          'Order update failed',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+
+      return success;
+    } catch (error) {
+      console.error('Error processing Paymob callback:', error.message);
+      throw new HttpException(
+        `Failed to process callback: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async refundOrder(orderId: string) {
+    try {
+      const order = await this.prisma.order.findUnique({
+        where: {
+          paymentId: orderId,
+        },
+      });
+
+      if (!order) {
+        throw new HttpException(
+          'Order not found with the provided order id',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      const refundRequest = {
+        amount_cents: order.amountCents,
+        transaction_id: orderId,
+      };
+
+      const res = await fetch(
+        'https://accept.paymob.com/api/acceptance/void_refund/refund',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Token ${this.PAYMOB_SECRET_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(refundRequest),
+        },
+      );
+
+      if (!res.ok) {
+        const error = await res.text();
+        throw new HttpException(
+          'Failed to refund order ' + error,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const data = await res.json();
+
+      return data;
     } catch (error) {
       throw new HttpException(
-        'Failed to process callback',
+        'Failed to refund order',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

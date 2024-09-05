@@ -14,10 +14,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
   async validate(payload: PayLoad) {
-    
-    const user = await this.userService.findByEmail(payload.email);
-    const result = user ? user : null;
+    const result = await this.userService.findByEmail(payload.email);
 
-    return result;
+    if (!result) {
+      return null;
+    }
+    // destructuring password from the result object and returning the rest of the object
+    const { password, ...userWithoutPassword } = result;
+
+    return userWithoutPassword;
   }
 }

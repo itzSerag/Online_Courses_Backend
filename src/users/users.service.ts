@@ -4,6 +4,7 @@ import * as bcrypt from 'bcrypt';
 import { SignUpDto } from 'src/auth/dto';
 import { log } from 'console';
 import { UserWithId, UserWithoutPassword } from './types';
+import { PaymentStatus } from 'src/payment/types';
 
 @Injectable()
 export class UsersService {
@@ -109,5 +110,31 @@ export class UsersService {
       where: { email },
       data: { isVerified: true },
     });
+  }
+
+  async getUserOrders(userId: number) {
+    try {
+      const userOrders = await this.prisma.order.findMany({
+        where: { userId },
+      });
+
+      return userOrders;
+    } catch (err) {
+      log('Error fetching user orders:', err);
+      throw new Error('Could not fetch user orders');
+    }
+  }
+
+  async getUserCompletedOrders(userId: number) {
+    try {
+      const userOrders = await this.prisma.order.findMany({
+        where: { userId, paymentStatus: PaymentStatus.COMPLETED },
+      });
+
+      return userOrders;
+    } catch (err) {
+      log('Error fetching user orders:', err);
+      throw new Error('Could not fetch user orders');
+    }
   }
 }

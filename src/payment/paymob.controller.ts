@@ -5,7 +5,6 @@ import {
   UseGuards,
   Req,
   BadRequestException,
-  Get,
 } from '@nestjs/common';
 import { PaymobService } from './paymob.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -14,13 +13,18 @@ import { UserWithId } from 'src/users/types'; // Assuming you have a UserWithId 
 import { log } from 'console';
 import * as fs from 'fs';
 import * as path from 'path'; // Correct import for the path module
-import { paymentCallback } from './types/callback';
+import { Level_Name } from './types';
+import { PaymentPostBodyCallback } from './types/callback';
+import { UsersService } from 'src/users/users.service';
 
 @Controller('payment')
 export class PaymobController {
   public filePath: string;
 
-  constructor(private readonly paymobService: PaymobService) {
+  constructor(
+    private paymobService: PaymobService,
+    private userService: UsersService,
+  ) {
     // Correct file path usage
     this.filePath = path.join(__dirname, '../../src/courses-data.json');
   }
@@ -37,8 +41,6 @@ export class PaymobController {
       throw new BadRequestException('Invalid integration ID');
     }
 
-    log(paymentIntention);
-
     // read the json object and pass it to the service method
     const levelsData = JSON.parse(fs.readFileSync(this.filePath, 'utf-8'));
 
@@ -50,8 +52,6 @@ export class PaymobController {
     if (!level) {
       throw new BadRequestException('Invalid item name');
     }
-
-    log(level);
 
     const data = {
       amount: level.price,
@@ -81,14 +81,11 @@ export class PaymobController {
       },
     };
 
-    log(data);
-    log(user);
-
     try {
       // Process payment and pass userId to the service method
       const clientURL = await this.paymobService.processOrder(data, user.id);
 
-      return { success: true, clientURL };
+      return { clientURL };
     } catch (error) {
       throw new BadRequestException(
         `Payment processing failed: ${error.message}`,
@@ -96,32 +93,50 @@ export class PaymobController {
     }
   }
 
-  // @UseGuards(AuthGuard('jwt'))
-  // @Post('refund')
-  // async refundTransaction(
-  //   @Body('transactionId') transactionId: string,
-  //   @Body('amountCents') amountCents: number,
-  // ) {
-  //   try {
-  //     // Implement refund logic here
-  //     // const refundResponse = await this.paymobService.refund(transactionId, amountCents);
-  //     // return { success: true, refundResponse };
-  //   } catch (error) {
-  //     throw new BadRequestException(`Refund failed: ${error.message}`);
-  //   }
-  // }
+  @Post('callback')
+  async callbackPost(@Body() data: PaymentPostBodyCallback) {
+    log('WE ARE IN POST Post');
 
-  @Get('callback')
-  async callback(@Req() data: any) {
-    try {
-      const paymentCallbackData: paymentCallback = data;
+    const success = data.obj.success;
+    const orderId = data.obj.id;
+    const userEmail = data.obj.order.shipping_data.email;
 
-      const success = paymentCallbackData.obj.success;
-      const orderId = paymentCallbackData.obj.order.id;
+    log(data.obj.order.shipping_data);
 
-      return this.paymobService.handlePaymobCallback(orderId, success);
-    } catch (error) {
-      throw new BadRequestException(`Callback failed: ${error.message}`);
+
+    const userData = await this.paymobService.handlePaymobCallback(
+      orderId,
+      success,
+      data.obj.amount_cents,
+      userEmail,
+    );
+
+    return { userData };
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post('refund')
+  async refundOrder(@Req() req: any, @Body('item_name') itemName: Level_Name) {
+    // an array of type orderewdq
+    const userOrders = await this.userService.getUserCompletedOrders(
+      req.user.id,
+    );
+
+    // see if the user orders got this item that he want to refund or not
+    if (
+      userOrders.length === 0 ||
+      !userOrders.some((order) => order.itemName === itemName)
+    ) {
+      throw new BadRequestException('No order found for this item');
     }
+
+    const { success } = await this.paymobService.refundOrder(
+      userOrders[0].paymentId,
+    );
+
+    if (!success) {
+      throw new BadRequestException('Failed to refund the order');
+    }
+    return { success };
   }
 }

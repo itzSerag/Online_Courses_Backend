@@ -14,9 +14,9 @@ model User {
   firstName    String
   lastName     String
   password     String
-  phoneNumber  String?        @default("+2011111111")
-  country      String?        @default("EG")
-  city         String?        @default("Cairo")
+  phoneNumber  String?        @default("NA")
+  country      String?        @default("NA")
+  city         String?        @default("NA")
   strategy     String         @default("local")
   role         Role           @default(USER)
   isVerified   Boolean        @default(false)
@@ -91,25 +91,22 @@ model UserTask {
   @@unique([userId, taskId])
 }
 
+
+// every course payment will be stored in the order table
+////////////////// --- EVERY COURSE/LEVEL HAS A UNIQUE PRICE --- //////////////////////////
 model Order {
   id            Int           @id @default(autoincrement())
-  items         OrderItem[]
-  amountCents   Int
+  itemName      Level_Name
+  amountCents   Int           @unique
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId        Int
   paymentStatus PaymentStatus @default(PENDING)
-  paymentDate   DateTime?     @default(now())
-  paymentId     Int?          @unique
-}
+  paymentDate   DateTime     @default(now())
+  paymentId     String?          @unique
 
-model OrderItem {
-  id          Int        @id @default(autoincrement())
-  name        Level_Name
-  amountCents Int
-  order       Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  orderId     Int
+  @@unique([userId, amountCents])
 }
 
 model OTP {
@@ -129,6 +126,7 @@ enum PaymentStatus {
   PENDING
   COMPLETED
   FAILED
+  REFUNDED
 }
 
 enum Level_Name {
@@ -139,3 +137,4 @@ enum Level_Name {
   LEVEL_C1
   LEVEL_C2
 }
+
