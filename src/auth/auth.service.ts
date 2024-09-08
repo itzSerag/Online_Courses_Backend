@@ -81,10 +81,10 @@ export class AuthService {
     const { password, ...userWithoutPassword } = newUser;
 
     /// generate and create an otp record
-    const otp = await this.generateOTP(user.email);
+    await this.generateOTP(user.email);
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const emailResponse = await this.emailService.sendEmail(user.email, otp);
+    // const emailResponse = await this.emailService.sendEmail(user.email, otp);
 
     return {
       access_token: jwt,
