@@ -28,14 +28,14 @@ export class UploadController {
   ) {
     const result = await this.uploadService.uploadSingleFile(
       file,
-      content.item_name, // Level
-      content.stage,
-      content.day,
+      content.item_name, // Level_A1
+      content.stage, // Stage_2
+      content.day, // Day_22
     );
     log(result);
   }
 
-  @UseGuards(AdminGuard)
+  // @UseGuards(AdminGuard)
   // iam not deleting from my server -- POST i think is for this
   @Delete('')
   async deleteFile(
@@ -58,8 +58,8 @@ export class UploadController {
     const result = await this.uploadService.getContentByName(
       fileName,
       content.item_name, // Level
-      content.stage,
-      content.day,
+      content.stage, // stage_2
+      content.day, // day_22
     );
 
     if (!result) {

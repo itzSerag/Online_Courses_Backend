@@ -47,6 +47,8 @@ export class PaymobService {
 
       const data = await res.json();
 
+      log(data);
+
       return data;
     } catch (error) {
       throw new HttpException(
@@ -63,6 +65,8 @@ export class PaymobService {
         await this.createIntention(paymentRequest);
       const clientSecretToken = dataUserPaymentIntention.client_secret;
       const clientURL = `https://accept.paymob.com/unifiedcheckout/?publicKey=${this.PAYMOB_PUBLIC_KEY}&clientSecret=${clientSecretToken}`;
+
+      log(clientURL);
 
       await this.prisma.order.create({
         data: {

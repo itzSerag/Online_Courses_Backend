@@ -24,7 +24,6 @@ export class UploadService {
     });
   }
 
-  
   async uploadSingleFile(
     file: Express.Multer.File,
     item_name: string, // e.g., "Level_A1", "Level_A2", etc.
@@ -78,7 +77,7 @@ export class UploadService {
 
       return { message: 'File deleted successfully' };
     } catch (error) {
-      throw new InternalServerErrorException(error + "Cant Delete");
+      throw new InternalServerErrorException(error + 'Cant Delete');
     }
   }
 
@@ -89,6 +88,7 @@ export class UploadService {
     day: string,
   ) {
     const key = `Levels/${item_name}/${stage}/${day}/${fileName}`;
+    const serag = 'seragg';
     try {
       const command = new GetObjectCommand({
         Bucket: this.AWS_S3_BUCKET,

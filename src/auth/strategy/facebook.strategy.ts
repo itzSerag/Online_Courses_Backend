@@ -29,7 +29,6 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
       provider: profile.provider,
     };
 
-    
     done(null, user);
   }
 }
