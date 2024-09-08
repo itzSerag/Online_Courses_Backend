@@ -19,20 +19,19 @@ import { UploadService } from './upload.service';
 export class UploadController {
   constructor(private uploadService: UploadService) {}
 
-  @UseGuards(AdminGuard)
+  // @UseGuards(AdminGuard)
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
   async upload(
     @UploadedFile() file: Express.Multer.File,
     @Body() content: UploadDayContentDTO,
   ) {
-    const result = await this.uploadService.uploadSingleFile(
+    await this.uploadService.uploadSingleFile(
       file,
       content.item_name, // Level_A1
       content.stage, // Stage_2
       content.day, // Day_22
     );
-    log(result);
   }
 
   // @UseGuards(AdminGuard)
@@ -61,6 +60,8 @@ export class UploadController {
       content.stage, // stage_2
       content.day, // day_22
     );
+
+    log(result);
 
     if (!result) {
       throw new NotFoundException(
