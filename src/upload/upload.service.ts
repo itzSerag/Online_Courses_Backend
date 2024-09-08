@@ -88,7 +88,7 @@ export class UploadService {
     day: string,
   ) {
     const key = `Levels/${item_name}/${stage}/${day}/${fileName}`;
-    const serag = 'seragg';
+
     try {
       const command = new GetObjectCommand({
         Bucket: this.AWS_S3_BUCKET,
