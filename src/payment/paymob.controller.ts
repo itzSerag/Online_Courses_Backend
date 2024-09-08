@@ -103,7 +103,6 @@ export class PaymobController {
 
     log(data.obj.order.shipping_data);
 
-
     const userData = await this.paymobService.handlePaymobCallback(
       orderId,
       success,
@@ -117,7 +116,7 @@ export class PaymobController {
   @UseGuards(AuthGuard('jwt'))
   @Post('refund')
   async refundOrder(@Req() req: any, @Body('item_name') itemName: Level_Name) {
-    // an array of type orderewdq
+    // an array of type Order
     const userOrders = await this.userService.getUserCompletedOrders(
       req.user.id,
     );
