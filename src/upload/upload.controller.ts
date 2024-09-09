@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  InternalServerErrorException,
   NotFoundException,
   Post,
   UploadedFile,
@@ -26,12 +27,19 @@ export class UploadController {
     @UploadedFile() file: Express.Multer.File,
     @Body() content: UploadDayContentDTO,
   ) {
-    await this.uploadService.uploadSingleFile(
+    const result = await this.uploadService.uploadSingleFile(
       file,
       content.item_name, // Level_A1
       content.stage, // Stage_2
       content.day, // Day_22
     );
+
+    if (!result) {
+      return new InternalServerErrorException();
+    }
+    return {
+      message: 'File uploaded successfully',
+    };
   }
 
   // @UseGuards(AdminGuard)

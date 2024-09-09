@@ -4,7 +4,12 @@ import {
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotAcceptableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { log } from 'console';
 
@@ -16,11 +21,11 @@ export class UploadService {
   constructor(private readonly configService: ConfigService) {
     this.AWS_S3_BUCKET = 'online-courses-backend';
     this.S3Client = new S3Client({
+      region: this.configService.getOrThrow('AWS_REGION'),
       credentials: {
         accessKeyId: this.configService.getOrThrow('AWS_ACCESS_KEY_ID'),
         secretAccessKey: this.configService.getOrThrow('AWS_SECRET_ACCESS_KEY'),
       },
-      forcePathStyle: true,
     });
   }
 
@@ -30,7 +35,13 @@ export class UploadService {
     stage: string, // e.g., "Stage_1", "Stage_2"
     day: string, // e.g., "Day_1", "Day_2", ..., "Day_25"
   ) {
+    if (!file) {
+      return new NotAcceptableException('file not found in request');
+    }
+
     const key = `Levels/${item_name}/${stage}/${day}/${file.originalname}`;
+
+    log(key);
 
     try {
       const command = new PutObjectCommand({
@@ -38,20 +49,11 @@ export class UploadService {
         Body: file.buffer,
         // file path
         Key: key,
-        ACL: 'public-read',
-        Metadata: {
-          FileURL: `https://online-courses-backend.s3.amazonaws.com/${key}`,
-        },
       });
 
-      await this.S3Client.send(command).then((data) => {
-        log(data);
-      });
+      await this.S3Client.send(command);
 
-      return {
-        url: (await this.getFileUrl(key)).url,
-        key,
-      };
+      return true;
     } catch (err) {
       throw new InternalServerErrorException(err);
     }
@@ -71,9 +73,9 @@ export class UploadService {
         Key: key,
       });
 
-      await this.S3Client.send(command);
-      // notice 204 means there was a file and successfully deleted
-      //    200 --> nothing to delete -- get the code from metadata
+      await this.S3Client.send(command).catch((err) => {
+        log(err);
+      });
 
       return { message: 'File deleted successfully' };
     } catch (error) {
@@ -90,20 +92,32 @@ export class UploadService {
     const key = `Levels/${item_name}/${stage}/${day}/${fileName}`;
 
     try {
+      const URL = await this.getPresignedSignedUrl(key);
+
+      if (!URL) {
+        return null;
+      }
+
+      log(URL);
+
+      return URL;
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+
+  async getPresignedSignedUrl(key: string) {
+    try {
       const command = new GetObjectCommand({
         Bucket: this.AWS_S3_BUCKET,
         Key: key,
       });
 
-      const data = await this.S3Client.send(command);
+      const url = await getSignedUrl(this.S3Client, command, {
+        expiresIn: 60 * 60 * 24, // 24 hours
+      });
 
-      const FileURL = data.Metadata.fileurl;
-
-      if (!FileURL) {
-        return null;
-      }
-
-      return FileURL;
+      return { url };
     } catch (error) {
       throw new InternalServerErrorException(error);
     }
