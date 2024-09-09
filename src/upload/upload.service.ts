@@ -1,6 +1,7 @@
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -108,6 +109,14 @@ export class UploadService {
 
   async getPresignedSignedUrl(key: string) {
     try {
+      const headCommand = new HeadObjectCommand({
+        Bucket: this.AWS_S3_BUCKET,
+        Key: key,
+      });
+
+      // will throw an erorr ifff the key does not exist
+      await this.S3Client.send(headCommand);
+
       const command = new GetObjectCommand({
         Bucket: this.AWS_S3_BUCKET,
         Key: key,
