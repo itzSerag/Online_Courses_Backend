@@ -43,7 +43,6 @@ export class UploadController {
   }
 
   // @UseGuards(AdminGuard)
-  // iam not deleting from my server -- POST i think is for this
   @Delete('')
   async deleteFile(
     @Body() content: UploadDayContentDTO,

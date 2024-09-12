@@ -10,6 +10,7 @@ import { PayLoad, SignUpDto } from './dto';
 import { UserWithoutPassword } from 'src/users/types';
 import { EmailService } from './auth.email.service';
 import { OtpService } from './auth.otp.service';
+import { log } from 'console';
 
 @Injectable()
 export class AuthService {
@@ -19,6 +20,14 @@ export class AuthService {
     private readonly emailService: EmailService,
     private readonly otpService: OtpService,
   ) {}
+
+  async isVerified(email: string) {
+    const user = await this.userService.findByEmail(email);
+    if (user.isVerified) {
+      return true;
+    }
+    return false;
+  }
 
   async validateUser(
     email: string,
@@ -53,7 +62,7 @@ export class AuthService {
     return null;
   }
 
-  /// move to UTILS
+  /// UTILS
   async generateOTP(email: string) {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     await this.otpService.createOtp(email, otp);
@@ -105,6 +114,42 @@ export class AuthService {
     };
   }
 
+  async resetPassword(email: string, password: string) {
+    const user = await this.userService.findByEmail(email);
+
+    if (!user) {
+      throw new ConflictException('User with this email does not exist');
+    }
+
+    // make sure to hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    try {
+      await this.userService.updateUser(user.id, { password: hashedPassword });
+      return { message: 'Password updated successfully' };
+    } catch (err) {
+      throw new ConflictException('Failed to update password');
+    }
+  }
+
+  async resendOtp(email: string) {
+    const user = await this.userService.findByEmail(email);
+
+    if (!user) {
+      throw new ConflictException('User with this email does not exist');
+    }
+
+    // delete the previous otp record
+    await this.otpService.deleteOtp(email);
+    // find the otp record and update it with new otp
+    // gonna need it becuse of sending an email
+    const otp = await this.generateOTP(email);
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // const emailResponse = await this.emailService.sendEmail(email, otp);
+    // log(emailResponse);
+    return { message: 'OTP sent successfully' };
+  }
+
   async findOrCreateOAuthUser(profile: any) {
     let user = await this.userService.findByEmail(profile.email);
 
@@ -146,5 +191,9 @@ export class AuthService {
     });
 
     return { message: 'OTP is correct', user: user };
+  }
+
+  async logout() {
+    return { message: 'Logged out successfully' };
   }
 }

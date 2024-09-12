@@ -16,7 +16,9 @@ import * as path from 'path'; // Correct import for the path module
 import { Level_Name } from './types';
 import { PaymentPostBodyCallback } from './types/callback';
 import { UsersService } from 'src/users/users.service';
+import { IsVerifiedGuard } from 'src/auth/guard/isVerified.guard';
 
+@UseGuards(IsVerifiedGuard)
 @Controller('payment')
 export class PaymobController {
   public filePath: string;

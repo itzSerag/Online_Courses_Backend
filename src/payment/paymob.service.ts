@@ -68,15 +68,23 @@ export class PaymobService {
 
       log(clientURL);
 
-      await this.prisma.order.create({
-        data: {
-          userId: userId,
-          amountCents: paymentRequest.amount,
-          paymentStatus: PaymentStatus.PENDING,
-          itemName: paymentRequest.items[0].name,
-          paymentId: null,
-        },
-      });
+      await this.prisma.order
+        .create({
+          data: {
+            userId: userId,
+            amountCents: paymentRequest.amount,
+            paymentStatus: PaymentStatus.PENDING,
+            itemName: paymentRequest.items[0].name,
+            paymentId: null,
+          },
+        })
+        .catch((error) => {
+          throw new HttpException(
+            'Failed to create order , or user already have the same level ' +
+              error,
+            HttpStatus.INTERNAL_SERVER_ERROR,
+          );
+        });
 
       return clientURL;
     } catch (error) {

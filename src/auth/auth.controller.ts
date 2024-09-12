@@ -12,6 +12,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { LoginDto, PayLoad, SignUpDto } from './dto';
 import { JwtAuthGuard } from './guard';
+import { IsVerifiedGuard } from './guard/isVerified.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -31,6 +32,19 @@ export class AuthController {
   @Post('signup')
   async signup(@Body() body: SignUpDto): Promise<any> {
     return this.authService.signup(body);
+  }
+
+  @Post('reset-password')
+  @UseGuards(IsVerifiedGuard)
+  @UseGuards(AuthGuard('jwt'))
+  async resetPassword(@Body('password') password: string, @Req() req) {
+    return await this.authService.resetPassword(req.user.email, password);
+  }
+
+  @Post('resend-otp')
+  @UseGuards(JwtAuthGuard)
+  async resendOtp(@Req() req) {
+    return this.authService.resendOtp(req.user.email);
   }
 
   @Get('facebook')
@@ -92,5 +106,11 @@ export class AuthController {
     const result = await this.authService.verifyOtp(otp, req.user);
 
     return result;
+  }
+
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  async logout() {
+    return this.authService.logout();
   }
 }
