@@ -10,6 +10,7 @@ async function bootstrap() {
     origin: '*',
     allowedHeaders: '*',
     credentials: true,
+    exposedHeaders: '*',
     methods: ['PUT', 'GET', 'PATCH', 'DELETE'],
   });
 
