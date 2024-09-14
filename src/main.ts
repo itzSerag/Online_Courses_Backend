@@ -8,6 +8,8 @@ async function bootstrap() {
   // CORS
   app.enableCors({
     origin: '*',
+    allowedHeaders: '*',
+    credentials: true,
     methods: ['PUT', 'GET', 'PATCH', 'DELETE'],
   });
 
