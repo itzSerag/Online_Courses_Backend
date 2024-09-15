@@ -30,7 +30,7 @@
       ]
     },
     {
-      "source": "https://online-courses-backend.vercel.app/api/(.*)",
+      "source": "online-courses-backend.vercel.app/api/(.*)",
       "headers": [
         { "key": "Access-Control-Allow-Credentials", "value": "true" },
         { "key": "Access-Control-Allow-Origin", "value": "*" },
@@ -45,7 +45,7 @@
       ]
     },
     {
-      "source": "http://localhost:8080/(.*)",
+      "source": "(http://localhost:8080)/(.*)",
       "headers": [
         { "key": "Access-Control-Allow-Credentials", "value": "true" },
         { "key": "Access-Control-Allow-Origin", "value": "*" },
