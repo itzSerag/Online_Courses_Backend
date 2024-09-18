@@ -8,14 +8,14 @@
   ],
   "rewrites": [
     {
-      "source": "*",
+      "source": "/(.*)",
       "destination": "/src/main.ts"
     }
   ],
 
   "headers": [
     {
-      "source": "*",
+      "source": "/(.*)",
       "headers": [
         { "key": "Access-Control-Allow-Credentials", "value": "true" },
         {
