@@ -31,11 +31,18 @@ export class AuthService {
 
   async validateUser(
     email: string,
-    password: string,
+    userPassword: string,
   ): Promise<UserWithoutPassword | null> {
     const user = await this.userService.findByEmail(email);
 
     if (!user) {
+      return null;
+    }
+
+    // if the password is not correct
+    const isPasswordValid = await bcrypt.compare(userPassword, user.password);
+    log(isPasswordValid);
+    if (user && !isPasswordValid) {
       return null;
     }
 
@@ -53,13 +60,9 @@ export class AuthService {
         access_token: jwt,
       });
     }
-
-    if (user && (await bcrypt.compare(password, user.password))) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { password, ...userWithoutPassword } = user;
-      return userWithoutPassword;
-    }
-    return null;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, ...userWithoutPassword } = user;
+    return userWithoutPassword;
   }
 
   /// UTILS
