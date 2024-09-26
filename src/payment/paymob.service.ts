@@ -121,20 +121,27 @@ export class PaymobService {
       }
 
       // Update the order in the database with payment status
-      const updatedOrder = await this.prisma.order.update({
-        where: {
-          userId_amountCents: {
-            userId: user.id,
-            amountCents: amount,
+      const updatedOrder = await this.prisma.order
+        .update({
+          where: {
+            userId_amountCents: {
+              userId: user.id,
+              amountCents: amount,
+            },
           },
-        },
-        data: {
-          paymentStatus: success
-            ? PaymentStatus.COMPLETED
-            : PaymentStatus.FAILED,
-          paymentId: orderId.toString(),
-        },
-      });
+          data: {
+            paymentStatus: success
+              ? PaymentStatus.COMPLETED
+              : PaymentStatus.FAILED,
+            paymentId: orderId.toString(),
+          },
+        })
+        .catch((error) => {
+          throw new HttpException(
+            'Failed to update order ' + error,
+            HttpStatus.INTERNAL_SERVER_ERROR,
+          );
+        });
 
       if (!updatedOrder) {
         throw new HttpException(

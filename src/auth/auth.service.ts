@@ -39,7 +39,7 @@ export class AuthService {
       return null;
     }
 
-    // if the password is not correct
+    
     const isPasswordValid = await bcrypt.compare(userPassword, user.password);
     log(isPasswordValid);
     if (user && !isPasswordValid) {
@@ -65,7 +65,7 @@ export class AuthService {
     return userWithoutPassword;
   }
 
-  /// UTILS
+  /// UTILS -- generate and create otp
   async generateOTP(email: string) {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     await this.otpService.createOtp(email, otp);
@@ -124,7 +124,6 @@ export class AuthService {
       throw new ConflictException('User with this email does not exist');
     }
 
-    // make sure to hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
     try {
       await this.userService.updateUser(user.id, { password: hashedPassword });
@@ -143,13 +142,12 @@ export class AuthService {
 
     // delete the previous otp record
     await this.otpService.deleteOtp(email);
-    // find the otp record and update it with new otp
-    // gonna need it becuse of sending an email
+   
     const otp = await this.generateOTP(email);
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     // const emailResponse = await this.emailService.sendEmail(email, otp);
     // log(emailResponse);
+
     return { message: 'OTP sent successfully' };
   }
 
@@ -197,6 +195,9 @@ export class AuthService {
   }
 
   async logout() {
+    // destroy the token
+    
+    
     return { message: 'Logged out successfully' };
   }
 }

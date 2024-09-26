@@ -20,7 +20,7 @@ export class UploadService {
   private S3Client: S3Client;
 
   constructor(private readonly configService: ConfigService) {
-    this.AWS_S3_BUCKET = 'online-courses-backend';
+    this.AWS_S3_BUCKET = this.configService.getOrThrow('AWS_S3_BUCKET');
     this.S3Client = new S3Client({
       region: this.configService.getOrThrow('AWS_REGION'),
       credentials: {
@@ -99,9 +99,8 @@ export class UploadService {
         return null;
       }
 
-      log(URL);
-
-      return URL;
+      const data = await fetch(URL.url);
+      return data.json();
     } catch (error) {
       throw new InternalServerErrorException(error);
     }
@@ -132,7 +131,7 @@ export class UploadService {
     }
   }
 
-  /// UTILS ///
+  /// UTILS -- IFF its public///
   async getFileUrl(key: string) {
     return { url: `https://${this.AWS_S3_BUCKET}.s3.amazonaws.com/${key}` };
   }

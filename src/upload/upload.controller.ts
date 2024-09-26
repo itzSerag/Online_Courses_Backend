@@ -20,13 +20,17 @@ import { UploadService } from './upload.service';
 export class UploadController {
   constructor(private uploadService: UploadService) {}
 
-  // @UseGuards(AdminGuard)
-  @Post('upload')
+  @UseGuards(AdminGuard)
+  @Post('')
   @UseInterceptors(FileInterceptor('file'))
   async upload(
     @UploadedFile() file: Express.Multer.File,
     @Body() content: UploadDayContentDTO,
   ) {
+    if (file.mimetype !== 'application/json') {
+      return new InternalServerErrorException('Invalid file type');
+    }
+
     const result = await this.uploadService.uploadSingleFile(
       file,
       content.item_name, // Level_A1
@@ -42,7 +46,7 @@ export class UploadController {
     };
   }
 
-  // @UseGuards(AdminGuard)
+  @UseGuards(AdminGuard)
   @Delete('')
   async deleteFile(
     @Body() content: UploadDayContentDTO,
@@ -68,13 +72,11 @@ export class UploadController {
       content.day, // day_22
     );
 
-    log(result);
-
     if (!result) {
       throw new NotFoundException(
         `Can't find any file by this name : ${fileName}`,
       );
     }
-    return { result };
+    return result;
   }
 }
