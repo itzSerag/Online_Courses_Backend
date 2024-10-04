@@ -39,7 +39,6 @@ export class AuthService {
       return null;
     }
 
-    
     const isPasswordValid = await bcrypt.compare(userPassword, user.password);
     log(isPasswordValid);
     if (user && !isPasswordValid) {
@@ -142,7 +141,7 @@ export class AuthService {
 
     // delete the previous otp record
     await this.otpService.deleteOtp(email);
-   
+
     const otp = await this.generateOTP(email);
 
     // const emailResponse = await this.emailService.sendEmail(email, otp);
@@ -196,8 +195,6 @@ export class AuthService {
 
   async logout() {
     // destroy the token
-    
-    
     return { message: 'Logged out successfully' };
   }
 }

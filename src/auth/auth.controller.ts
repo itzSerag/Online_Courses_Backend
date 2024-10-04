@@ -7,12 +7,14 @@ import {
   Req,
   HttpStatus,
   UnauthorizedException,
+  Res,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { LoginDto, PayLoad, SignUpDto } from './dto';
 import { JwtAuthGuard } from './guard';
 import { IsVerifiedGuard } from './guard/isVerified.guard';
+import { Request, Response } from 'express';
 
 @Controller('auth')
 export class AuthController {
@@ -55,7 +57,7 @@ export class AuthController {
 
   @Get('facebook/callback')
   @UseGuards(AuthGuard('facebook'))
-  async facebookLoginCallback(@Req() req): Promise<any> {
+  async facebookLoginCallback(@Req() req, @Res() res: Response): Promise<any> {
     const user = await this.authService.findOrCreateOAuthUser(req.user);
 
     if (!user) {
@@ -69,7 +71,8 @@ export class AuthController {
     };
 
     const jwt = await this.authService.generateToken(payload);
-    return { access_token: jwt, user, provider: req.user.provider };
+    res.cookie('access_token', jwt);
+    res.redirect('/');
   }
 
   @Get('google')
@@ -78,7 +81,10 @@ export class AuthController {
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  async googleAuthRedirect(@Req() req): Promise<any> {
+  async googleAuthRedirect(
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<any> {
     if (!req.user) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -93,11 +99,8 @@ export class AuthController {
 
     const jwt = await this.authService.generateToken(payload);
 
-    return {
-      access_token: jwt,
-      user,
-      provider: req.user.provider,
-    };
+    res.cookie('access_token', jwt);
+    res.redirect('/');
   }
 
   @Post('verify-otp')
