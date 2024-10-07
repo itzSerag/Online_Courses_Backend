@@ -11,24 +11,25 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { log } from 'console';
-import { AdminGuard } from 'src/auth/guard';
+import { AdminGuard, JwtAuthGuard } from 'src/auth/guard';
 import { UploadDayContentDTO } from './dto';
 import { UploadService } from './upload.service';
 
+
+@UseGuards(JwtAuthGuard)
 @Controller('files')
 export class UploadController {
   constructor(private uploadService: UploadService) {}
 
-  @UseGuards(AdminGuard)
   @Post('')
+  @UseGuards(AdminGuard)
   @UseInterceptors(FileInterceptor('file'))
   async upload(
     @UploadedFile() file: Express.Multer.File,
     @Body() content: UploadDayContentDTO,
   ) {
     if (file.mimetype !== 'application/json') {
-      return new InternalServerErrorException('Invalid file type');
+      throw new InternalServerErrorException('Invalid file type');
     }
 
     const result = await this.uploadService.uploadSingleFile(
@@ -39,8 +40,9 @@ export class UploadController {
     );
 
     if (!result) {
-      return new InternalServerErrorException();
+      throw new InternalServerErrorException();
     }
+
     return {
       message: 'File uploaded successfully',
     };

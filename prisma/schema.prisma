@@ -24,73 +24,72 @@ model User {
   updatedAt    DateTime       @updatedAt
   levels       Level[]
   userProgress UserProgress[]
-  userTasks    UserTask[]
+  // userTasks    UserTask[]
   orders       Order[] // user payments
 }
 
 model Level {
   id          Int       @id @default(autoincrement())
   name        String
-  stages      Stage[]
+  // stages      Stage[]
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      Int
   paid        Boolean   @default(false)
   paymentDate DateTime?
 }
 
-model Stage {
-  id           Int            @id @default(autoincrement())
-  name         String
-  level        Level          @relation(fields: [levelId], references: [id], onDelete: Cascade)
-  levelId      Int
-  days         Day[]
-  userProgress UserProgress[]
-}
+// model Stage {
+//   id           Int            @id @default(autoincrement())
+//   name         String
+//   level        Level          @relation(fields: [levelId], references: [id], onDelete: Cascade)
+//   levelId      Int
+//   days         Day[]
+//   userProgress UserProgress[]
+// }
 
 model Day {
   id           Int            @id @default(autoincrement())
-  stage        Stage          @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  // stage        Stage          @relation(fields: [stageId], references: [id], onDelete: Cascade)
   stageId      Int
   dayNumber    Int
-  tasks        Task[]
+  // tasks        Task[]
+  completed    Boolean        @default(false)
+  completedAt  DateTime       @default(now())
   userProgress UserProgress[]
 }
 
-model Task {
-  id        Int        @id @default(autoincrement())
-  name      String
-  content   String
-  day       Day        @relation(fields: [dayId], references: [id], onDelete: Cascade)
-  dayId     Int
-  userTasks UserTask[]
-}
+// model Task {
+//   id        Int        @id @default(autoincrement())
+//   name      String
+//   content   String
+//   day       Day        @relation(fields: [dayId], references: [id], onDelete: Cascade)
+//   dayId     Int
+//   userTasks UserTask[]
+// }
 
 model UserProgress {
-  id          Int      @id @default(autoincrement())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      Int
-  stage       Stage    @relation(fields: [stageId], references: [id], onDelete: Cascade)
-  stageId     Int
-  day         Day      @relation(fields: [dayId], references: [id], onDelete: Cascade)
-  dayId       Int
-  completed   Boolean  @default(false)
-  completedAt DateTime @default(now())
+  id      Int  @id @default(autoincrement())
+  user    User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId  Int
+  // stage       Stage    @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  stageId Int
+  day     Day  @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  dayId   Int
 
   @@unique([userId, stageId, dayId])
 }
 
-model UserTask {
-  id          Int      @id @default(autoincrement())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      Int
-  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  taskId      Int
-  completed   Boolean  @default(false)
-  completedAt DateTime @default(now())
+// model UserTask {
+//   id          Int      @id @default(autoincrement())
+//   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   userId      Int
+//   task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+//   taskId      Int
+//   completed   Boolean  @default(false)
+//   completedAt DateTime @default(now())
 
-  @@unique([userId, taskId])
-}
-
+//   @@unique([userId, taskId])
+// }
 
 // every course payment will be stored in the order table
 ////////////////// --- EVERY COURSE/LEVEL HAS A UNIQUE PRICE --- //////////////////////////
@@ -103,8 +102,8 @@ model Order {
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId        Int
   paymentStatus PaymentStatus @default(PENDING)
-  paymentDate   DateTime     @default(now())
-  paymentId     String?          @unique
+  paymentDate   DateTime      @default(now())
+  paymentId     String?       @unique
 
   @@unique([userId, amountCents])
 }
@@ -137,4 +136,3 @@ enum Level_Name {
   LEVEL_C1
   LEVEL_C2
 }
-

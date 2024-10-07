@@ -15,10 +15,11 @@ export class AdminGuard implements CanActivate {
     context: ExecutionContext,
   ): boolean | Promise<boolean> | Observable<boolean> {
     const request = context.switchToHttp().getRequest();
-    if (request.user && request.user.roles === 'ADMIN') {
+
+    if (request.user && request.user.role === 'ADMIN') {
       return true;
     }
 
-    throw new UnauthorizedException(' access denied');
+    throw new UnauthorizedException('access denied');
   }
 }
