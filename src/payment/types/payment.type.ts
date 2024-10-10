@@ -73,6 +73,7 @@ export enum PaymentStatus {
   PENDING = 'PENDING',
   COMPLETED = 'COMPLETED',
   FAILED = 'FAILED',
+  REFUNDED = 'REFUNDED',
 }
 export enum Level_Name {
   LEVEL_A1 = 'LEVEL_A1',

@@ -22,90 +22,87 @@ model User {
   isVerified   Boolean        @default(false)
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
-  levels       Level[]
+  userLevels   UserLevel[]
   userProgress UserProgress[]
-  // userTasks    UserTask[]
-  orders       Order[] // user payments
+  userTasks    UserTask[]
+  orders       Order[]
 }
 
 model Level {
-  id          Int       @id @default(autoincrement())
-  name        String
-  // stages      Stage[]
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      Int
-  paid        Boolean   @default(false)
-  paymentDate DateTime?
+  id_name      Level_Name     @id
+  days         Day[]
+  userLevels   UserLevel[]
+  orders       Order[]
 }
-
-// model Stage {
-//   id           Int            @id @default(autoincrement())
-//   name         String
-//   level        Level          @relation(fields: [levelId], references: [id], onDelete: Cascade)
-//   levelId      Int
-//   days         Day[]
-//   userProgress UserProgress[]
-// }
 
 model Day {
   id           Int            @id @default(autoincrement())
-  // stage        Stage          @relation(fields: [stageId], references: [id], onDelete: Cascade)
-  stageId      Int
   dayNumber    Int
-  // tasks        Task[]
-  completed    Boolean        @default(false)
-  completedAt  DateTime       @default(now())
+  level        Level          @relation(fields: [levelName], references: [id_name], onDelete: Cascade)
+  levelName    Level_Name
+  tasks        Task[]
   userProgress UserProgress[]
+
+  @@unique([levelName, dayNumber])
 }
 
-// model Task {
-//   id        Int        @id @default(autoincrement())
-//   name      String
-//   content   String
-//   day       Day        @relation(fields: [dayId], references: [id], onDelete: Cascade)
-//   dayId     Int
-//   userTasks UserTask[]
-// }
+model Task {
+  id          Int        @id @default(autoincrement())
+  name        String
+  description String?
+  day         Day        @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  dayId       Int
+  userTasks   UserTask[]
+  @@unique([dayId, name])
+}
+
+model UserLevel {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  level     Level    @relation(fields: [levelName], references: [id_name], onDelete: Cascade)
+  levelName Level_Name
+
+  @@unique([userId, levelName])
+}
 
 model UserProgress {
-  id      Int  @id @default(autoincrement())
-  user    User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId  Int
-  // stage       Stage    @relation(fields: [stageId], references: [id], onDelete: Cascade)
-  stageId Int
-  day     Day  @relation(fields: [dayId], references: [id], onDelete: Cascade)
-  dayId   Int
+  id          Int       @id @default(autoincrement())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
+  day         Day       @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  dayId       Int
+  completed   Boolean   @default(false)
+  completedAt DateTime?
 
-  @@unique([userId, stageId, dayId])
+  @@unique([userId, dayId])
 }
 
-// model UserTask {
-//   id          Int      @id @default(autoincrement())
-//   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-//   userId      Int
-//   task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-//   taskId      Int
-//   completed   Boolean  @default(false)
-//   completedAt DateTime @default(now())
+model UserTask {
+  id          Int       @id @default(autoincrement())
+  user        User      @relation(fields: [userId], references: [id])
+  userId      Int
+  task        Task      @relation(fields: [taskId], references: [id])
+  taskId      Int
+  completed   Boolean   @default(false)
+  completedAt DateTime?
 
-//   @@unique([userId, taskId])
-// }
+  @@unique([userId, taskId])
+}
 
-// every course payment will be stored in the order table
-////////////////// --- EVERY COURSE/LEVEL HAS A UNIQUE PRICE --- //////////////////////////
 model Order {
   id            Int           @id @default(autoincrement())
-  itemName      Level_Name
-  amountCents   Int           @unique
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId        Int
+  level         Level         @relation(fields: [levelName], references: [id_name], onDelete: Cascade)
+  levelName     Level_Name
+  amountCents   Int
   paymentStatus PaymentStatus @default(PENDING)
   paymentDate   DateTime      @default(now())
   paymentId     String?       @unique
-
-  @@unique([userId, amountCents])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  @@unique([userId, levelName])
 }
 
 model OTP {

@@ -16,9 +16,8 @@ import * as path from 'path'; // Correct import for the path module
 import { Level_Name } from './types';
 import { PaymentPostBodyCallback } from './types/callback';
 import { UsersService } from 'src/users/users.service';
-import { IsVerifiedGuard } from 'src/auth/guard/isVerified.guard';
+import { JwtAuthGuard } from 'src/auth/guard';
 
-@UseGuards(IsVerifiedGuard)
 @Controller('payment')
 export class PaymobController {
   public filePath: string;
@@ -30,14 +29,35 @@ export class PaymobController {
     // Correct file path usage
     this.filePath = path.join(__dirname, '../../src/courses-data.json');
   }
-  @UseGuards(AuthGuard('jwt'))
-  @Post('process-payment')
+
+  @Post('/callback')
+  async callbackPost(@Body() data: PaymentPostBodyCallback) {
+    log('WE ARE IN POST Post');
+
+    const success = data.obj.success;
+    const orderId = data.obj.id;
+    const userEmail = data.obj.order.shipping_data.email;
+
+    log(data.obj.order.shipping_data);
+
+    const userData = await this.paymobService.handlePaymobCallback(
+      orderId,
+      success,
+      data.obj.amount_cents,
+      userEmail,
+    );
+
+    return { userData };
+  }
+  @UseGuards(JwtAuthGuard)
+  @Post('/process-payment')
   async processPayment(
     @Body() paymentIntention: PaymentRequestDTO,
-    @Req() req: any,
+    @Req() req,
   ) {
-    const user: UserWithId = req.user; // Assuming the user object contains the id
+    const user: UserWithId = req.user;
     const integration_id = parseInt(process.env.PAYMOB_INTEGRATION_ID, 10);
+    console.log('integration_id', integration_id);
 
     if (isNaN(integration_id)) {
       throw new BadRequestException('Invalid integration ID');
@@ -50,10 +70,6 @@ export class PaymobController {
     const level = levelsData.Levels.find(
       (lvl) => lvl.name === paymentIntention.item_name,
     );
-
-    if (!level) {
-      throw new BadRequestException('Invalid item name');
-    }
 
     const data = {
       amount: level.price,
@@ -94,29 +110,9 @@ export class PaymobController {
       );
     }
   }
-
-  @Post('callback')
-  async callbackPost(@Body() data: PaymentPostBodyCallback) {
-    log('WE ARE IN POST Post');
-
-    const success = data.obj.success;
-    const orderId = data.obj.id;
-    const userEmail = data.obj.order.shipping_data.email;
-
-    log(data.obj.order.shipping_data);
-
-    const userData = await this.paymobService.handlePaymobCallback(
-      orderId,
-      success,
-      data.obj.amount_cents,
-      userEmail,
-    );
-
-    return { userData };
-  }
-
+  @UseGuards(JwtAuthGuard)
   @UseGuards(AuthGuard('jwt'))
-  @Post('refund')
+  @Post('/refund')
   async refundOrder(@Req() req: any, @Body('item_name') itemName: Level_Name) {
     // an array of type Order
     const userOrders = await this.userService.getUserCompletedOrders(
@@ -126,7 +122,7 @@ export class PaymobController {
     // see if the user orders got this item that he want to refund or not
     if (
       userOrders.length === 0 ||
-      !userOrders.some((order) => order.itemName === itemName)
+      !userOrders.some((order) => order.levelName === itemName)
     ) {
       throw new BadRequestException('No order found for this item');
     }

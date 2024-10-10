@@ -1,3 +1,0 @@
--- AlterTable
-ALTER TABLE "Order" ADD COLUMN     "paymentDate" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP,
-ADD COLUMN     "paymentId" TEXT;

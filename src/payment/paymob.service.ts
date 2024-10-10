@@ -1,7 +1,7 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../prisma/prisma.service'; // assuming you have a PrismaService for database access
-import { PaymentRequest, PaymentStatus } from './types';
+import { PrismaService } from '../prisma/prisma.service';
+import { Level_Name, PaymentRequest, PaymentStatus } from './types';
 import { log } from 'console';
 
 @Injectable()
@@ -13,7 +13,7 @@ export class PaymobService {
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly prisma: PrismaService, // Injecting PrismaService
+    private readonly prisma: PrismaService,
   ) {
     this.integrationId = this.configService.get<string>(
       'PAYMOB_INTEGRATION_ID',
@@ -25,7 +25,6 @@ export class PaymobService {
       this.configService.get<string>('PAYMOB_SECRET_KEY');
   }
 
-  // Get Auth Token
   async createIntention(paymentRequest: PaymentRequest) {
     try {
       const res = await fetch('https://accept.paymob.com/v1/intention/', {
@@ -46,9 +45,7 @@ export class PaymobService {
       }
 
       const data = await res.json();
-
       log(data);
-
       return data;
     } catch (error) {
       throw new HttpException(
@@ -58,7 +55,6 @@ export class PaymobService {
     }
   }
 
-  // Create Order
   async processOrder(paymentRequest: PaymentRequest, userId: number) {
     try {
       const dataUserPaymentIntention =
@@ -68,28 +64,39 @@ export class PaymobService {
 
       log(clientURL);
 
-      await this.prisma.order
-        .create({
-          data: {
-            userId: userId,
-            amountCents: paymentRequest.amount,
-            paymentStatus: PaymentStatus.PENDING,
-            itemName: paymentRequest.items[0].name,
-            paymentId: null,
-          },
-        })
-        .catch((error) => {
-          throw new HttpException(
-            'Failed to create order , or user already have the same level ' +
-              error,
-            HttpStatus.INTERNAL_SERVER_ERROR,
-          );
-        });
+      // Create the order
+      await this.prisma.order.create({
+        data: {
+          userId,
+          levelName: paymentRequest.items[0].name as Level_Name,
+          amountCents: paymentRequest.amount,
+          paymentStatus: PaymentStatus.PENDING,
+          createdAt: new Date(),
+        },
+      });
+
+      // // Create or update UserLevel
+      // await this.prisma.userLevel.upsert({
+      //   where: {
+      //     userId_levelName: {
+      //       userId: userId,
+      //       levelName: level.id_name,
+      //     },
+      //   },
+      //   update: {
+      //     purchased: false, // Will be set to true when payment is confirmed
+      //   },
+      //   create: {
+      //     userId: userId,
+      //     levelId: level.id,
+      //     purchased: false,
+      //   },
+      // });
 
       return clientURL;
     } catch (error) {
       throw new HttpException(
-        'Failed to process order',
+        'Failed to process order: ' + error.message,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -104,52 +111,50 @@ export class PaymobService {
     try {
       log('INSIDE CALLBACK HANDLER');
 
-      // Get user id from email
       const user = await this.prisma.user.findUnique({
+        where: { email: userEmail },
+      });
+
+      // Find the most recent pending order for this user
+      const pendingOrder = await this.prisma.order.findFirst({
         where: {
-          email: userEmail,
+          userId: user.id,
+          amountCents: amount,
+          paymentStatus: PaymentStatus.PENDING,
+        },
+        orderBy: {
+          createdAt: 'desc',
         },
       });
 
-      log('User:', user);
-
-      if (!user) {
+      if (!pendingOrder) {
         throw new HttpException(
-          'User not found with the provided email',
+          'No matching pending order found',
           HttpStatus.NOT_FOUND,
         );
       }
 
-      // Update the order in the database with payment status
-      const updatedOrder = await this.prisma.order
-        .update({
-          where: {
-            userId_amountCents: {
-              userId: user.id,
-              amountCents: amount,
-            },
-          },
+      // Update the order
+      const updatedOrder = await this.prisma.order.update({
+        where: { id: pendingOrder.id },
+        data: {
+          paymentStatus: success
+            ? PaymentStatus.COMPLETED
+            : PaymentStatus.FAILED,
+          paymentId: orderId.toString(),
+        },
+        include: { user: true },
+      });
+
+      // If payment was successful, update UserLevel
+      if (success) {
+        await this.prisma.userLevel.create({
           data: {
-            paymentStatus: success
-              ? PaymentStatus.COMPLETED
-              : PaymentStatus.FAILED,
-            paymentId: orderId.toString(),
+            userId: user.id,
+            levelName: Level_Name[updatedOrder.levelName],
           },
-        })
-        .catch((error) => {
-          throw new HttpException(
-            'Failed to update order ' + error,
-            HttpStatus.INTERNAL_SERVER_ERROR,
-          );
         });
-
-      if (!updatedOrder) {
-        throw new HttpException(
-          'Order update failed',
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        );
       }
-
       return success;
     } catch (error) {
       console.error('Error processing Paymob callback:', error.message);
@@ -163,9 +168,7 @@ export class PaymobService {
   async refundOrder(orderId: string) {
     try {
       const order = await this.prisma.order.findUnique({
-        where: {
-          paymentId: orderId,
-        },
+        where: { paymentId: orderId },
       });
 
       if (!order) {
@@ -202,10 +205,27 @@ export class PaymobService {
 
       const data = await res.json();
 
+      // If refund is successful, update the order and UserLevel
+      if (data.success) {
+        await this.prisma.order.update({
+          where: { paymentId: orderId },
+          data: { paymentStatus: PaymentStatus.REFUNDED },
+        });
+
+        await this.prisma.userLevel.delete({
+          where: {
+            userId_levelName: {
+              userId: order.userId,
+              levelName: order.levelName,
+            },
+          },
+        });
+      }
+
       return data;
     } catch (error) {
       throw new HttpException(
-        'Failed to refund order',
+        'Failed to refund order: ' + error.message,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

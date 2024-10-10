@@ -11,12 +11,14 @@ import {
   UseGuards,
   ForbiddenException,
   ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import { AdminGuard } from 'src/auth/guard/admin.guard';
 import { JwtAuthGuard } from 'src/auth/guard/jwt.auth.guard';
 import { UsersService } from './users.service';
 import { SignUpDto, UpdateUserDto } from '../auth/dto';
 import { UserWithoutPassword as User } from './types'; // Assuming you have a User entity
+import { Level_Name, UserFinishDay, UserTask } from './dto';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
@@ -45,6 +47,36 @@ export class UsersController {
     return this.userService.findAllUsers();
   }
 
+  @Get('/levels')
+  async getLevels(@Req() req) {
+    const res = await this.userService.getUserOrders(req.user.id);
+
+    return res.map((order) => order.levelName);
+  }
+
+  @Get('/completed-days')
+  async getCompletedDaysInLevel(
+    @Query('levelName') levelName: Level_Name,
+    @Req() req,
+  ) {
+    console.log('into this');
+    const res = this.userService.getCompletedDaysInLevel(
+      req.user.id,
+      levelName,
+    );
+    return res;
+  }
+
+  @Get('/completed-tasks')
+  async getCompletedTasksInDay(@Query() userTask: UserTask, @Req() req) {
+    const res = this.userService.getCompletedTasksInDay(
+      req.user.id,
+      userTask.levelName,
+      Number(userTask.day),
+    );
+
+    return res;
+  }
   @Post('/')
   @UseGuards(AdminGuard)
   createUser(@Body() createUserDto: SignUpDto): Promise<User> {
@@ -76,9 +108,36 @@ export class UsersController {
 
   @Delete('/:id')
   @UseGuards(AdminGuard)
-  async deleteUser(@Param('id', ParseIntPipe) id: number): Promise<void> {
+  async deleteUser(@Param('id', ParseIntPipe) id: number) {
     const user = await this.userService.findById(id);
     if (!user) throw new NotFoundException('User not found');
-    await this.userService.deleteUser(id);
+    return await this.userService.deleteUser(id);
+  }
+
+  @Post('/complete-day')
+  async markDayAsCompleted(@Body() finishDay: UserFinishDay, @Req() req) {
+    if (finishDay.day > 50) {
+      throw new ForbiddenException('Day cannot be greater than 50');
+    }
+    return await this.userService.markDayAsCompleted(
+      req.user.id,
+      finishDay.levelName,
+      finishDay.day,
+    );
+  }
+
+  @Post('/complete-task')
+  async markTaskAsCompleted(@Body() taskFinished: UserTask, @Req() req) {
+    if (taskFinished.day > 50) {
+      throw new ForbiddenException('Day cannot be greater than 50');
+    }
+    const res = await this.userService.markTaskAsCompleted(
+      req.user.id,
+      taskFinished.levelName,
+      Number(taskFinished.day),
+      taskFinished.taskName,
+    );
+
+    return res;
   }
 }

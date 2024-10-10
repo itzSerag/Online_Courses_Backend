@@ -1,10 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { SignUpDto } from 'src/auth/dto';
 import { log } from 'console';
 import { UserWithId, UserWithoutPassword } from './types';
 import { PaymentStatus } from 'src/payment/types';
+import { Level_Name } from './dto';
 
 @Injectable()
 export class UsersService {
@@ -135,6 +140,205 @@ export class UsersService {
     } catch (err) {
       log('Error fetching user orders:', err);
       throw new Error('Could not fetch user orders');
+    }
+  }
+
+  async getCompletedDaysInLevel(userId: number, levelName: Level_Name) {
+    await this._checkIfUserHasThatLevel(userId, levelName);
+
+    const completedDays = await this.prisma.userProgress.findMany({
+      where: {
+        userId: userId,
+        day: {
+          levelName: levelName,
+        },
+        completed: true,
+      },
+      select: {
+        day: {
+          select: {
+            dayNumber: true,
+          },
+        },
+      },
+    });
+
+    const dayNumbers = completedDays.map(
+      (completedDay) => completedDay.day.dayNumber,
+    );
+
+    return dayNumbers;
+  }
+
+  async markDayAsCompleted(
+    userId: number,
+    levelName: Level_Name,
+    dayId: number,
+  ) {
+    await this._checkIfUserHasThatLevel(userId, levelName);
+
+    const day = await this.prisma.day.upsert({
+      where: {
+        levelName_dayNumber: {
+          levelName: levelName,
+          dayNumber: dayId,
+        },
+      },
+      update: {},
+      create: {
+        levelName: levelName,
+        dayNumber: dayId,
+      },
+      select: { id: true },
+    });
+
+    // Upsert the user progress
+    await this.prisma.userProgress.upsert({
+      where: {
+        userId_dayId: {
+          userId: userId,
+          dayId: day.id,
+        },
+      },
+      update: {
+        completed: true,
+        completedAt: new Date(),
+      },
+      create: {
+        userId: userId,
+        dayId: day.id,
+        completed: true,
+        completedAt: new Date(),
+      },
+    });
+
+    return 'Day Completed Successfully';
+  }
+
+  async markTaskAsCompleted(
+    userId: number,
+    levelName: Level_Name,
+    dayNumber: number,
+    taskName: string,
+  ) {
+    await this._checkIfUserHasThatLevel(userId, levelName);
+
+    try {
+      // Ensure the day exists or create it if it doesn't
+      const day = await this.prisma.day.upsert({
+        where: {
+          levelName_dayNumber: {
+            levelName: levelName,
+            dayNumber: dayNumber,
+          },
+        },
+        update: {},
+        create: {
+          levelName: levelName,
+          dayNumber: dayNumber,
+        },
+        select: { id: true },
+      });
+
+      log(taskName);
+      // Ensure the task exists or create it if it doesn't
+      const task = await this.prisma.task.upsert({
+        where: {
+          dayId_name: {
+            dayId: day.id,
+            name: taskName,
+          },
+        },
+        update: {},
+        create: {
+          dayId: day.id,
+          name: taskName,
+          description: 'Task Default Description',
+        },
+        select: { id: true },
+      });
+
+      // Mark the task as completed for the user
+      await this.prisma.userTask.upsert({
+        where: {
+          userId_taskId: {
+            userId: userId,
+            taskId: task.id,
+          },
+        },
+        update: {
+          completed: true,
+          completedAt: new Date(),
+        },
+        create: {
+          userId: userId,
+          taskId: task.id,
+          completed: true,
+          completedAt: new Date(),
+        },
+      });
+
+      return 'Task Completed Successfully';
+    } catch (err) {
+      throw new Error(`Error completing task: ${err.message}`);
+    }
+  }
+
+  async getCompletedTasksInDay(
+    userId: number,
+    levelName: Level_Name,
+    day: number,
+  ) {
+    const userOrders = await this.getUserCompletedOrders(userId);
+    if (!userOrders || userOrders.length === 0) {
+      throw new ForbiddenException('User has not bought the level');
+    }
+
+    // find if the day exists in user progress if not create one
+    await this.prisma.userProgress.upsert({
+      where: {
+        userId_dayId: {
+          userId,
+          dayId: day,
+        },
+      },
+      update: {},
+      create: {
+        userId,
+        dayId: day,
+      },
+      select: { id: true },
+    });
+
+    // get the tasks completed by the user
+    const completedTasks = await this.prisma.userTask.findMany({
+      where: {
+        userId,
+        task: {
+          dayId: day,
+        },
+        completed: true,
+      },
+      select: {
+        task: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    return completedTasks.map((task) => task.task.name);
+  }
+
+  async _checkIfUserHasThatLevel(userId: number, levelName: Level_Name) {
+    const userOrders = await this.getUserCompletedOrders(userId);
+    if (
+      !userOrders ||
+      userOrders.length === 0 ||
+      userOrders.map((order) => order.levelName).indexOf(levelName) === -1
+    ) {
+      throw new ForbiddenException('User has not bought the level');
     }
   }
 }
