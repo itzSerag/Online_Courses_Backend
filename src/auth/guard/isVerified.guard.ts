@@ -25,14 +25,10 @@ export class IsVerifiedGuard implements CanActivate {
       console.log('User not found in request.');
       throw new UnauthorizedException('User not authenticated.');
     }
+  
+    console.log('User verified:', user.isVerified);
 
-    // Check if user is verified using the AuthService
-    const isVerified = user.isVerified;
-
-    // Log the verification check result
-    console.log('User verified:', isVerified);
-
-    if (!isVerified) {
+    if (!user.isVerified) {
       throw new ForbiddenException('Account is not verified.');
     }
 

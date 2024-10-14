@@ -13,10 +13,10 @@ import { UserWithId } from 'src/users/types'; // Assuming you have a UserWithId 
 import { log } from 'console';
 import * as fs from 'fs';
 import * as path from 'path'; // Correct import for the path module
-import { Level_Name } from './types';
 import { PaymentPostBodyCallback } from './types/callback';
 import { UsersService } from 'src/users/users.service';
 import { JwtAuthGuard } from 'src/auth/guard';
+import { Level_Name } from 'src/core/types';
 
 @Controller('payment')
 export class PaymobController {
@@ -113,7 +113,7 @@ export class PaymobController {
   @UseGuards(JwtAuthGuard)
   @UseGuards(AuthGuard('jwt'))
   @Post('/refund')
-  async refundOrder(@Req() req: any, @Body('item_name') itemName: Level_Name) {
+  async refundOrder(@Req() req: any, @Body('levelName') levelName: Level_Name) {
     // an array of type Order
     const userOrders = await this.userService.getUserCompletedOrders(
       req.user.id,
@@ -122,7 +122,7 @@ export class PaymobController {
     // see if the user orders got this item that he want to refund or not
     if (
       userOrders.length === 0 ||
-      !userOrders.some((order) => order.levelName === itemName)
+      !userOrders.some((order) => order.levelName === levelName)
     ) {
       throw new BadRequestException('No order found for this item');
     }

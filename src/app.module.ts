@@ -9,6 +9,7 @@ import { AppController } from './app.controller';
 import { AuthController } from './auth/auth.controller';
 import { UsersController } from './users/users.controller';
 import { PaymentModule } from './payment/paymob.module';
+import { CoreModule } from './core/core.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { PaymentModule } from './payment/paymob.module';
       isGlobal: true,
     }),
     PaymentModule,
+    CoreModule,
   ],
   controllers: [AppController, AuthController, UsersController],
 

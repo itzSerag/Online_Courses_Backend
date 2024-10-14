@@ -1,6 +1,7 @@
 import {
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -9,7 +10,7 @@ import { SignUpDto } from 'src/auth/dto';
 import { log } from 'console';
 import { UserWithId, UserWithoutPassword } from './types';
 import { PaymentStatus } from 'src/payment/types';
-import { Level_Name } from './dto';
+import { Level_Name } from 'src/core/types';
 
 @Injectable()
 export class UsersService {
@@ -40,16 +41,18 @@ export class UsersService {
     return user;
   }
 
-  async findById(id: number): Promise<UserWithoutPassword | null> {
-    const user = await this.prisma.user.findUnique({ where: { id } });
+  async findById(id: number): Promise<UserWithId | null> {
+    try {
+      const user = await this.prisma.user.findUnique({ where: { id } });
 
-    if (!user) {
-      throw new NotFoundException('User not found');
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      return user;
+    } catch (error) {
+      throw new InternalServerErrorException("Couldn't fetch user");
     }
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password, ...userWithoutPassword } = user;
-    return userWithoutPassword;
   }
 
   async findAllUsers(): Promise<UserWithoutPassword[]> {

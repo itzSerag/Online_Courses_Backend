@@ -29,7 +29,7 @@ export class AuthService {
     return false;
   }
 
-  async validateUser(
+  async __validateUser(
     email: string,
     userPassword: string,
   ): Promise<UserWithoutPassword | null> {
@@ -124,6 +124,7 @@ export class AuthService {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+
     try {
       await this.userService.updateUser(user.id, { password: hashedPassword });
       return { message: 'Password updated successfully' };
@@ -150,7 +151,7 @@ export class AuthService {
     return { message: 'OTP sent successfully' };
   }
 
-  async findOrCreateOAuthUser(profile: any) {
+  async __findOrCreateOAuthUser(profile: any) {
     let user = await this.userService.findByEmail(profile.email);
 
     if (!user) {

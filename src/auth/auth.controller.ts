@@ -22,12 +22,14 @@ export class AuthController {
 
   @Post('login')
   async login(@Body() body: LoginDto) {
-    const user = await this.authService.validateUser(body.email, body.password);
+    const user = await this.authService.__validateUser(
+      body.email,
+      body.password,
+    );
 
     if (!user) {
       throw new UnauthorizedException('Invalid Email or Password');
     }
-
     return this.authService.login(user);
   }
 
@@ -38,7 +40,7 @@ export class AuthController {
 
   @Post('reset-password')
   @UseGuards(IsVerifiedGuard)
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(JwtAuthGuard)
   async resetPassword(@Body('password') password: string, @Req() req) {
     return await this.authService.resetPassword(req.user.email, password);
   }
@@ -58,7 +60,7 @@ export class AuthController {
   @Get('facebook/callback')
   @UseGuards(AuthGuard('facebook'))
   async facebookLoginCallback(@Req() req, @Res() res: Response): Promise<any> {
-    const user = await this.authService.findOrCreateOAuthUser(req.user);
+    const user = await this.authService.__findOrCreateOAuthUser(req.user);
 
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
@@ -89,7 +91,7 @@ export class AuthController {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const user = await this.authService.findOrCreateOAuthUser(req.user);
+    const user = await this.authService.__findOrCreateOAuthUser(req.user);
 
     const payload: PayLoad = {
       email: user.email,

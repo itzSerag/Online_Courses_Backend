@@ -1,15 +1,17 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
-import { Level_Name, PaymentRequest, PaymentStatus } from './types';
+import { PaymentRequest, PaymentStatus } from './types';
 import { log } from 'console';
+import { Level_Name } from 'src/core/types';
+import logger from 'src/core/logger/logger';
 
 @Injectable()
 export class PaymobService {
-  public PAYMOB_SECRET_KEY: string;
-  public integrationId: string;
-  public hmacSecret: string;
-  public PAYMOB_PUBLIC_KEY: string;
+  private PAYMOB_SECRET_KEY: string;
+  private integrationId: string;
+  private hmacSecret: string;
+  private PAYMOB_PUBLIC_KEY: string;
 
   constructor(
     private readonly configService: ConfigService,
@@ -57,12 +59,38 @@ export class PaymobService {
 
   async processOrder(paymentRequest: PaymentRequest, userId: number) {
     try {
+      const existingCompletedOrder = await this.prisma.order.findFirst({
+        where: {
+          userId,
+          levelName: paymentRequest.items[0].name as Level_Name,
+          paymentStatus: PaymentStatus.COMPLETED,
+        },
+      });
+
+      // check if the user had this course before or not - delete it and continue the flow
+      if (existingCompletedOrder) {
+        throw new HttpException(
+          'User has already completed payment for this level',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
       const dataUserPaymentIntention =
         await this.createIntention(paymentRequest);
       const clientSecretToken = dataUserPaymentIntention.client_secret;
+      // MAY NEED TO CHANGE THIS URL -- not hard coded it
       const clientURL = `https://accept.paymob.com/unifiedcheckout/?publicKey=${this.PAYMOB_PUBLIC_KEY}&clientSecret=${clientSecretToken}`;
 
-      log(clientURL);
+      // before create the order check if the user has the same order before
+
+      await this.prisma.order.delete({
+        where: {
+          userId_levelName: {
+            userId,
+            levelName: paymentRequest.items[0].name,
+          },
+        },
+      });
 
       // Create the order
       await this.prisma.order.create({
@@ -74,24 +102,6 @@ export class PaymobService {
           createdAt: new Date(),
         },
       });
-
-      // // Create or update UserLevel
-      // await this.prisma.userLevel.upsert({
-      //   where: {
-      //     userId_levelName: {
-      //       userId: userId,
-      //       levelName: level.id_name,
-      //     },
-      //   },
-      //   update: {
-      //     purchased: false, // Will be set to true when payment is confirmed
-      //   },
-      //   create: {
-      //     userId: userId,
-      //     levelId: level.id,
-      //     purchased: false,
-      //   },
-      // });
 
       return clientURL;
     } catch (error) {
@@ -109,8 +119,6 @@ export class PaymobService {
     userEmail: string,
   ) {
     try {
-      log('INSIDE CALLBACK HANDLER');
-
       const user = await this.prisma.user.findUnique({
         where: { email: userEmail },
       });
@@ -122,6 +130,7 @@ export class PaymobService {
           amountCents: amount,
           paymentStatus: PaymentStatus.PENDING,
         },
+        // the most recent order
         orderBy: {
           createdAt: 'desc',
         },
@@ -148,6 +157,10 @@ export class PaymobService {
 
       // If payment was successful, update UserLevel
       if (success) {
+        logger.info(
+          `User ${user.email} has successfully paid for level ${updatedOrder.levelName}`,
+        );
+
         await this.prisma.userLevel.create({
           data: {
             userId: user.id,
@@ -157,7 +170,7 @@ export class PaymobService {
       }
       return success;
     } catch (error) {
-      console.error('Error processing Paymob callback:', error.message);
+      logger.error('Error processing Paymob callback:', error.message);
       throw new HttpException(
         `Failed to process callback: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -166,15 +179,23 @@ export class PaymobService {
   }
 
   async refundOrder(orderId: string) {
+    // first must check if the order exists and not refunded and the created at is less than 14 days
     try {
       const order = await this.prisma.order.findUnique({
-        where: { paymentId: orderId },
+        where: { paymentId: orderId, paymentStatus: PaymentStatus.COMPLETED },
       });
 
       if (!order) {
         throw new HttpException(
           'Order not found with the provided order id',
           HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (order.createdAt < new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)) {
+        throw new HttpException(
+          'Order is older than 14 days and cannot be refunded',
+          HttpStatus.BAD_REQUEST,
         );
       }
 
@@ -221,6 +242,7 @@ export class PaymobService {
           },
         });
       }
+      logger.info(`Order ${orderId} has been refunded successfully`);
 
       return data;
     } catch (error) {

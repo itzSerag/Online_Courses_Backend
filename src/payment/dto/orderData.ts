@@ -1,5 +1,5 @@
 import { IsNotEmpty, IsString } from 'class-validator';
-import { Level_Name } from '../types';
+import { Level_Name } from 'src/core/types';
 
 export class PaymentRequestDTO {
   @IsString()

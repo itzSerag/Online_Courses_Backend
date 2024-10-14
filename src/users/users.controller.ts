@@ -18,7 +18,8 @@ import { JwtAuthGuard } from 'src/auth/guard/jwt.auth.guard';
 import { UsersService } from './users.service';
 import { SignUpDto, UpdateUserDto } from '../auth/dto';
 import { UserWithoutPassword as User } from './types'; // Assuming you have a User entity
-import { Level_Name, UserFinishDay, UserTask } from './dto';
+import { UserFinishDay, UserTask } from './dto';
+import { Level_Name } from 'src/core/types';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
@@ -86,23 +87,18 @@ export class UsersController {
   @Get('/:id')
   async getUserById(@Param('id', ParseIntPipe) id: number): Promise<User> {
     const user = await this.userService.findById(id);
-    if (!user) throw new NotFoundException('User not found');
     return user;
   }
 
   @Put('/:id')
+  @UseGuards(AdminGuard)
   async updateUser(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateUserDto: UpdateUserDto,
-    @Req() req,
   ): Promise<User> {
     const user = await this.userService.findById(id);
     if (!user) throw new NotFoundException('User not found');
-
-    if (user.id !== req.user.id && !req.user.isAdmin) {
-      throw new ForbiddenException('You are not allowed to update this user');
-    }
-
+    
     return this.userService.updateUser(id, updateUserDto);
   }
 
