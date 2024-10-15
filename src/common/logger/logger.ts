@@ -6,7 +6,7 @@ const logFormat = printf(({ level, message, timestamp }) => {
   return `${timestamp} [${level}]: ${message}`;
 });
 
-const logger = createLogger({
+export const logger = createLogger({
   level: 'info',
   format: combine(timestamp(), logFormat),
   transports: [
@@ -14,5 +14,3 @@ const logger = createLogger({
     new transports.File({ filename: 'logs/combined.log' }),
   ],
 });
-
-export default logger;

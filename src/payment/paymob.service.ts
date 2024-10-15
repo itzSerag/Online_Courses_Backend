@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentRequest, PaymentStatus } from './types';
 import { log } from 'console';
-import logger from 'src/common/logger/logger';
+import { logger } from '../common/logger/logger';
 import { Level_Name } from '@prisma/client';
 
 @Injectable()
