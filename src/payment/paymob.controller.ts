@@ -16,7 +16,7 @@ import * as path from 'path'; // Correct import for the path module
 import { PaymentPostBodyCallback } from './types/callback';
 import { UsersService } from 'src/users/users.service';
 import { JwtAuthGuard } from 'src/auth/guard';
-import { Level_Name } from 'src/core/types';
+import { Level_Name } from 'src/common/types';
 
 @Controller('payment')
 export class PaymobController {
