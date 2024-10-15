@@ -1,5 +1,5 @@
+import { Level_Name } from '@prisma/client';
 import { IsNotEmpty, IsString } from 'class-validator';
-import { Level_Name } from 'src/common/types';
 
 export class PaymentRequestDTO {
   @IsString()

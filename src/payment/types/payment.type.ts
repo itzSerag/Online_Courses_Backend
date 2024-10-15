@@ -1,4 +1,4 @@
-import { Level_Name } from 'src/common/types';
+import { Level_Name } from "@prisma/client";
 
 export interface Item {
   name: Level_Name;

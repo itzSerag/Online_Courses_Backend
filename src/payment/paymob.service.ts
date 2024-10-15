@@ -3,8 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentRequest, PaymentStatus } from './types';
 import { log } from 'console';
-import { Level_Name } from 'src/common/types';
 import logger from 'src/common/logger/logger';
+import { Level_Name } from '@prisma/client';
 
 @Injectable()
 export class PaymobService {

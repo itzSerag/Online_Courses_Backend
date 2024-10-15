@@ -1,5 +1,5 @@
+import { Level_Name } from '@prisma/client';
 import { IsEnum, IsNotEmpty, IsNumber } from 'class-validator';
-import { Level_Name } from 'src/common/types';
 
 export class UserFinishedDays {
   @IsNotEmpty()
