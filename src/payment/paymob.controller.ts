@@ -15,7 +15,7 @@ import { log } from 'console';
 import { PaymentPostBodyCallback } from './types/callback';
 import { UsersService } from 'src/users/users.service';
 import { JwtAuthGuard } from 'src/auth/guard';
-import { Level_Name } from 'src/shared/enums';
+import { Level_Name } from '../shared/enums';
 import { readCoursesData } from 'src/util/file-data-courses';
 
 @Controller('payment')

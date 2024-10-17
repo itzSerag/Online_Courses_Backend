@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PaymentRequest, PaymentStatus } from './types';
 import { log } from 'console';
 import { logger } from '../common/logger/logger';
-import { Level_Name } from 'src/shared/enums';
+import { Level_Name } from '../shared/enums';
 
 @Injectable()
 export class PaymobService {

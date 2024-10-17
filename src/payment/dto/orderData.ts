@@ -1,5 +1,5 @@
 import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
-import { Level_Name } from 'src/shared/enums';
+import { Level_Name } from '../../shared/enums';
 
 export class PaymentRequestDTO {
   @IsString()
