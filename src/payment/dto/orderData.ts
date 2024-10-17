@@ -1,9 +1,10 @@
-import { Level_Name } from '@prisma/client';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import { Level_Name } from 'src/shared/enums';
 
 export class PaymentRequestDTO {
   @IsString()
   @IsNotEmpty()
+  @IsEnum(Level_Name)
   item_name: Level_Name;
 
   @IsString()

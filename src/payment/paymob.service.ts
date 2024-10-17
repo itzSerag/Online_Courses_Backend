@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PaymentRequest, PaymentStatus } from './types';
 import { log } from 'console';
 import { logger } from '../common/logger/logger';
-import { Level_Name } from '@prisma/client';
+import { Level_Name } from 'src/shared/enums';
 
 @Injectable()
 export class PaymobService {
@@ -83,20 +83,21 @@ export class PaymobService {
 
       // before create the order check if the user has the same order before
 
-      await this.prisma.order.delete({
+      await this.prisma.order.upsert({
         where: {
           userId_levelName: {
             userId,
             levelName: paymentRequest.items[0].name,
           },
         },
-      });
-
-      // Create the order
-      await this.prisma.order.create({
-        data: {
+        create: {
           userId,
           levelName: paymentRequest.items[0].name as Level_Name,
+          amountCents: paymentRequest.amount,
+          paymentStatus: PaymentStatus.PENDING,
+          createdAt: new Date(),
+        },
+        update: {
           amountCents: paymentRequest.amount,
           paymentStatus: PaymentStatus.PENDING,
           createdAt: new Date(),

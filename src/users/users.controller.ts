@@ -19,7 +19,7 @@ import { UsersService } from './users.service';
 import { SignUpDto, UpdateUserDto } from '../auth/dto';
 import { UserWithoutPassword as User } from './types'; // Assuming you have a User entity
 import { UserFinishDay, UserTask } from './dto';
-import { Level_Name } from '@prisma/client';
+import { Level_Name } from 'src/shared/enums';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)

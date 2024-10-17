@@ -5,30 +5,25 @@ import {
   UseGuards,
   Req,
   BadRequestException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { PaymobService } from './paymob.service';
 import { AuthGuard } from '@nestjs/passport';
 import { PaymentRequestDTO } from './dto/orderData';
 import { UserWithId } from 'src/users/types'; // Assuming you have a UserWithId type that includes user.id
 import { log } from 'console';
-import * as fs from 'fs';
-import * as path from 'path'; // Correct import for the path module
 import { PaymentPostBodyCallback } from './types/callback';
 import { UsersService } from 'src/users/users.service';
 import { JwtAuthGuard } from 'src/auth/guard';
-import { Level_Name } from '@prisma/client';
+import { Level_Name } from 'src/shared/enums';
+import { readCoursesData } from 'src/util/file-data-courses';
 
 @Controller('payment')
 export class PaymobController {
-  public filePath: string;
-
   constructor(
     private paymobService: PaymobService,
     private userService: UsersService,
-  ) {
-    // Correct file path usage
-    this.filePath = path.join(__dirname, '../../src/courses-data.json');
-  }
+  ) {}
 
   @Post('/callback')
   async callbackPost(@Body() data: PaymentPostBodyCallback) {
@@ -40,14 +35,20 @@ export class PaymobController {
 
     log(data.obj.order.shipping_data);
 
-    const userData = await this.paymobService.handlePaymobCallback(
-      orderId,
-      success,
-      data.obj.amount_cents,
-      userEmail,
-    );
+    try {
+      const userData = await this.paymobService.handlePaymobCallback(
+        orderId,
+        success,
+        data.obj.amount_cents,
+        userEmail,
+      );
 
-    return { userData };
+      return { userData };
+    } catch (e) {
+      throw new InternalServerErrorException(
+        `Failed to handle callback : ${e.message}`,
+      );
+    }
   }
   @UseGuards(JwtAuthGuard)
   @Post('/process-payment')
@@ -63,43 +64,46 @@ export class PaymobController {
       throw new BadRequestException('Invalid integration ID');
     }
 
-    // read the json object and pass it to the service method
-    const levelsData = JSON.parse(fs.readFileSync(this.filePath, 'utf-8'));
-
-    // Find the level by its name
-    const level = levelsData.Levels.find(
-      (lvl) => lvl.name === paymentIntention.item_name,
-    );
-
-    const data = {
-      amount: level.price,
-      currency: 'EGP',
-      payment_methods: [integration_id],
-
-      items: [
-        {
-          name: paymentIntention.item_name,
-          amount: level.price,
-          description: level.description,
-          quantity: 1,
-        },
-      ],
-      billing_data: {
-        apartment: 'dumy',
-        first_name: user.firstName,
-        last_name: user.lastName,
-        street: 'dumy',
-        building: 'dumy',
-        phone_number: paymentIntention.phone_number,
-        city: paymentIntention.city,
-        country: paymentIntention.country,
-        email: user.email,
-        floor: 'dumy',
-        state: 'dumy',
-      },
-    };
-
     try {
+      // Read the JSON object and pass it to the service method
+      const levelsData = readCoursesData();
+
+      // Find the level by its name
+      const level = levelsData.Levels.find(
+        (lvl) => lvl.name === paymentIntention.item_name,
+      );
+
+      if (!level) {
+        throw new BadRequestException('Level not found');
+      }
+
+      const data = {
+        amount: level.price,
+        currency: 'EGP',
+        payment_methods: [integration_id],
+        items: [
+          {
+            name: paymentIntention.item_name,
+            amount: level.price,
+            description: level.description,
+            quantity: 1,
+          },
+        ],
+        billing_data: {
+          apartment: 'dummy',
+          first_name: user.firstName,
+          last_name: user.lastName,
+          street: 'dummy',
+          building: 'dummy',
+          phone_number: paymentIntention.phone_number,
+          city: paymentIntention.city,
+          country: paymentIntention.country,
+          email: user.email,
+          floor: 'dummy',
+          state: 'dummy',
+        },
+      };
+
       // Process payment and pass userId to the service method
       const clientURL = await this.paymobService.processOrder(data, user.id);
 
