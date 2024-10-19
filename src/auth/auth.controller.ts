@@ -73,7 +73,7 @@ export class AuthController {
     };
 
     const jwt = await this.authService.generateToken(payload);
-    res.redirect(`${process.env.BASE_URL}/callback?token=${jwt}`);
+    res.redirect(`${process.env.BASE_URL}/ar/callback?token=${jwt}`);
   }
 
   @Get('google')
@@ -100,7 +100,7 @@ export class AuthController {
 
     const jwt = await this.authService.generateToken(payload);
 
-    res.redirect(`${process.env.WEBSITE_URL}/callback?token=${jwt}`);
+    res.redirect(`${process.env.WEBSITE_URL}/ar/callback?token=${jwt}`);
   }
 
   @Post('verify-otp')
