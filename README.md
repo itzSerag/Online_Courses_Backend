@@ -136,11 +136,6 @@ The Online Courses Backend project serves as a robust platform for managing user
 
 </details>
 
-
-<details closed><summary>prisma.migrations.20241010101643_new_design</summary>
-
-
-
 <details closed><summary>src.auth</summary>
 
 | File | Summary |
