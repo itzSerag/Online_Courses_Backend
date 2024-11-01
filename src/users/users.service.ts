@@ -10,7 +10,7 @@ import { SignUpDto } from 'src/auth/dto';
 import { log } from 'console';
 import { UserWithId, UserWithoutPassword } from './types';
 import { PaymentStatus } from 'src/payment/types';
-import { Level_Name } from '../shared/enums';
+import { Level_Name } from '../common/enums';
 
 @Injectable()
 export class UsersService {

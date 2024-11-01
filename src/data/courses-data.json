@@ -4,36 +4,53 @@
       "id": 1,
       "name": "LEVEL_A1",
       "description": "Level A1 course consists of 2 stages, each stage is 35 days including 10 days off with total 25 hours hands on learning. The course is designed to help you learn the basics of the language and reach a beginner level.",
+      "stage-1_description": "In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.",
+      "stage-2_description": "In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.",
       "price": 100
     },
     {
       "id": 2,
       "name": "LEVEL_A2",
       "description": "Level A2 course consists of 2 stages, each stage is 35 days including 10 days off with total 25 hours hands on learning. The course is designed to help you learn the basics of the language and reach a above beginner level.",
+      "stage-1_description": "In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.",
+      "stage-2_description": "In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.",
+
       "price": 200
     },
     {
       "id": 3,
       "name": "LEVEL_B1",
       "description": "Level B1 course consists of 2 stages, each stage is 35 days including 10 days off with total 25 hours hands on learning. The course is designed to help you learn the basics of the language and reach a intermediate level.",
+      "stage-1_description": "In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.",
+      "stage-2_description": "In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.",
+
       "price": 300
     },
     {
       "id": 4,
       "name": "LEVEL_B2",
       "description": "Level B2 course consists of 2 stages, each stage is 35 days including 10 days off with total 25 hours hands on learning. The course is designed to help you learn the basics of the language and reach a above intermediate level.",
+      "stage-1_description": "In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.",
+      "stage-2_description": "In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.",
+
       "price": 400
     },
     {
       "id": 5,
       "name": "LEVEL_C1",
       "description": "Level C1 course consists of 2 stages, each stage is 35 days including 10 days off with total 25 hours hands on learning. The course is designed to help you learn the basics of the language and reach a advanced level.",
+      "stage-1_description": "In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.",
+      "stage-2_description": "In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.",
+
       "price": 500
     },
     {
       "id": 6,
       "name": "LEVEL_C2",
       "description": "Level C2 course consists of 2 stages, each stage is 35 days including 10 days off with total 25 hours hands on learning. The course is designed to help you learn the basics of the language and reach a native level.",
+      "stage-1_description": "In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.",
+      "stage-2_description": "In this stage, you will learn the basics of the language, including the alphabet, numbers, colors, and basic phrases.",
+
       "price": 600
     }
   ]

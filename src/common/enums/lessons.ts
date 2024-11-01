@@ -1,0 +1,11 @@
+export enum LESSONS {
+  READ = 'READ',
+  PICTURES = 'PICTURES',
+  LISTEN = 'LISTEN',
+  Q_A = 'Q_A',
+  WRITE = 'WRITE',
+  SPEAK = 'SPEAK',
+  GRAMMAR = 'GRAMMAR',
+  DAILY_TEST = 'DAILY_TEST',
+  IDIOMS = 'IDIOMS',
+}

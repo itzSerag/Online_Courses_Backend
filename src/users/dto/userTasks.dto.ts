@@ -1,4 +1,4 @@
-import { Level_Name } from '../../shared/enums/level_name.enum';
+import { Level_Name } from '../../common/enums/level_name.enum';
 import { IsEnum, IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class UserTask {

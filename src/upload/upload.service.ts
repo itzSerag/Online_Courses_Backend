@@ -13,16 +13,20 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { log } from 'console';
+import { UploadFileDTO } from './dto';
 
 @Injectable()
 export class UploadService {
-  public AWS_S3_BUCKET: string;
+  private AWS_S3_BUCKET: string;
+  private AWS_S3_BUCKET_RES: string;
   private S3Client: S3Client;
 
   constructor(private readonly configService: ConfigService) {
     this.AWS_S3_BUCKET = this.configService.getOrThrow('AWS_S3_BUCKET');
+    this.AWS_S3_BUCKET_RES = this.configService.getOrThrow('AWS_S3_BUCKET_RES');
     this.S3Client = new S3Client({
       region: this.configService.getOrThrow('AWS_REGION'),
+
       credentials: {
         accessKeyId: this.configService.getOrThrow('AWS_ACCESS_KEY_ID'),
         secretAccessKey: this.configService.getOrThrow('AWS_SECRET_ACCESS_KEY'),
@@ -32,41 +36,50 @@ export class UploadService {
 
   async uploadSingleFile(
     file: Express.Multer.File,
-    item_name: string, // e.g., "Level_A1", "Level_A2", etc.
-    stage: string, // e.g., "Stage_1", "Stage_2"
-    day: string, // e.g., "Day_1", "Day_2", ..., "Day_25"
+    uploadFileDTO: UploadFileDTO,
   ) {
     if (!file) {
-      return new NotAcceptableException('file not found in request');
+      throw new NotAcceptableException(
+        'file not found in request or something wrong happened',
+      );
     }
 
-    const key = `Levels/${item_name}/${stage}/${day}/${file.originalname}`;
+    let fileTypePath = '';
+    if (file.mimetype.includes('image')) {
+      fileTypePath = 'Images';
+    }
 
-    log(key);
+    if (!fileTypePath) {
+      if (file.mimetype.includes('audio')) {
+        fileTypePath = 'Audio';
+      }
+    }
+
+    const levelName = uploadFileDTO.level_name;
+    const key = `${fileTypePath}/${levelName}/${uploadFileDTO.day}/${file.originalname}`;
 
     try {
       const command = new PutObjectCommand({
-        Bucket: this.AWS_S3_BUCKET,
+        Bucket: this.AWS_S3_BUCKET_RES,
         Body: file.buffer,
         // file path
         Key: key,
+        ACL: 'public-read',
       });
 
-      await this.S3Client.send(command);
+      await this.S3Client.send(command).catch((error) => {
+        log('something went wrong while uploading the file');
+        throw new InternalServerErrorException(error);
+      });
 
-      return true;
+      return this.__getFileUrl(key, this.AWS_S3_BUCKET_RES);
     } catch (err) {
       throw new InternalServerErrorException(err);
     }
   }
 
-  async deleteFile(
-    fileName: string,
-    item_name: string,
-    stage: string,
-    day: string,
-  ) {
-    const key = `Levels/${item_name}/${stage}/${day}/${fileName}`;
+  async deleteFile(fileName: string, level_name: string, day: string) {
+    const key = `Levels/${level_name}/${day}/${fileName}`;
 
     try {
       const command = new DeleteObjectCommand({
@@ -84,16 +97,11 @@ export class UploadService {
     }
   }
 
-  async getContentByName(
-    fileName: string,
-    item_name: string,
-    stage: string,
-    day: string,
-  ) {
-    const key = `Levels/${item_name}/${stage}/${day}/${fileName}`;
+  async getContentByName(fileName: string, level_name: string, day: string) {
+    const key = `Levels/${level_name}/${day}/${fileName}`;
 
     try {
-      const URL = await this.getPresignedSignedUrl(key);
+      const URL = await this.__getPresignedSignedUrl(key, this.AWS_S3_BUCKET);
 
       if (!URL) {
         return null;
@@ -106,10 +114,10 @@ export class UploadService {
     }
   }
 
-  async getPresignedSignedUrl(key: string) {
+  async __getPresignedSignedUrl(key: string, bucket: string) {
     try {
       const headCommand = new HeadObjectCommand({
-        Bucket: this.AWS_S3_BUCKET,
+        Bucket: bucket,
         Key: key,
       });
 
@@ -132,7 +140,7 @@ export class UploadService {
   }
 
   /// UTILS -- IFF its public///
-  async getFileUrl(key: string) {
-    return { url: `https://${this.AWS_S3_BUCKET}.s3.amazonaws.com/${key}` };
+  async __getFileUrl(key: string, bucket: string) {
+    return { url: `https://${bucket}.s3.amazonaws.com/${key}` };
   }
 }

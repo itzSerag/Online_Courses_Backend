@@ -3,8 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentRequest, PaymentStatus } from './types';
 import { log } from 'console';
-import { logger } from '../common/logger/logger';
-import { Level_Name } from '../shared/enums';
+import { Level_Name } from '../common/enums';
 
 @Injectable()
 export class PaymobService {
@@ -17,14 +16,15 @@ export class PaymobService {
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
   ) {
-    this.integrationId = this.configService.get<string>(
+    this.integrationId = this.configService.getOrThrow<string>(
       'PAYMOB_INTEGRATION_ID',
     );
-    this.hmacSecret = this.configService.get<string>('PAYMOB_HMAC_SECRET');
+    this.hmacSecret =
+      this.configService.getOrThrow<string>('PAYMOB_HMAC_SECRET');
     this.PAYMOB_PUBLIC_KEY =
-      this.configService.get<string>('PAYMOB_PUBLIC_KEY');
+      this.configService.getOrThrow<string>('PAYMOB_PUBLIC_KEY');
     this.PAYMOB_SECRET_KEY =
-      this.configService.get<string>('PAYMOB_SECRET_KEY');
+      this.configService.getOrThrow<string>('PAYMOB_SECRET_KEY');
   }
 
   async createIntention(paymentRequest: PaymentRequest) {
@@ -158,10 +158,6 @@ export class PaymobService {
 
       // If payment was successful, update UserLevel
       if (success) {
-        logger.info(
-          `User ${user.email} has successfully paid for level ${updatedOrder.levelName}`,
-        );
-
         await this.prisma.userLevel.create({
           data: {
             userId: user.id,
@@ -171,7 +167,6 @@ export class PaymobService {
       }
       return success;
     } catch (error) {
-      logger.error('Error processing Paymob callback:', error.message);
       throw new HttpException(
         `Failed to process callback: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -243,8 +238,6 @@ export class PaymobService {
           },
         });
       }
-      logger.info(`Order ${orderId} has been refunded successfully`);
-
       return data;
     } catch (error) {
       throw new HttpException(

@@ -20,6 +20,6 @@ export class AdminGuard implements CanActivate {
       return true;
     }
 
-    throw new UnauthorizedException('access denied');
+    throw new UnauthorizedException();
   }
 }

@@ -1,4 +1,4 @@
-import { Level_Name } from '../../shared/enums/level_name.enum';
+import { Level_Name } from '../../common/enums/level_name.enum';
 
 export interface Item {
   name: Level_Name;

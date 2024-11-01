@@ -1,15 +1,13 @@
-import { Level_Name } from '@prisma/client';
-import { IsNotEmpty, Matches } from 'class-validator';
+import { IsEnum, IsNotEmpty, Matches } from 'class-validator';
+import { Level_Name } from '../../common/enums';
 
-export class UploadDayContentDTO {
+export class UploadFileDTO {
   @IsNotEmpty()
-  item_name: Level_Name;
-
-  @IsNotEmpty()
-  stage: 'Stage_1' | 'Stage_2';
+  @IsEnum(Level_Name)
+  level_name: Level_Name;
 
   @IsNotEmpty()
-  @Matches(/^Day_(1[0-9]|2[0-5]|[1-9])$/)
-  // matches days from 1 to 25 only
+  // matches days from 1 to 50 only
+  @Matches(/^([1-9]|[1-4][0-9]|50)$/)
   day: string;
 }

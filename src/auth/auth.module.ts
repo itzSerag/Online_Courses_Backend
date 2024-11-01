@@ -11,6 +11,7 @@ import { GoogleStrategy } from './strategy/google.strategy';
 import { FacebookStrategy } from './strategy/facebook.strategy';
 import { OtpService } from './auth.otp.service';
 import { EmailService } from './auth.email.service';
+import { AuthController } from './auth.controller';
 
 @Module({
   imports: [
@@ -32,5 +33,6 @@ import { EmailService } from './auth.email.service';
     EmailService,
   ],
   exports: [AuthService, JwtAuthGuard],
+  controllers: [AuthController],
 })
 export class AuthModule {}

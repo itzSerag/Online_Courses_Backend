@@ -1,76 +1,78 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
-  InternalServerErrorException,
   NotFoundException,
   Post,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
 import { AdminGuard, JwtAuthGuard } from 'src/auth/guard';
-import { UploadDayContentDTO } from './dto';
+import { UploadFileDTO } from './dto';
 import { UploadService } from './upload.service';
-
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  AllowedAudioMimeTypes,
+  AllowedImageMimeTypes,
+} from './enum/file-mime-types.enum';
 
 @UseGuards(JwtAuthGuard)
 @Controller('files')
 export class UploadController {
   constructor(private uploadService: UploadService) {}
 
-  @Post('')
+  @Post('single-file')
   @UseGuards(AdminGuard)
   @UseInterceptors(FileInterceptor('file'))
   async upload(
     @UploadedFile() file: Express.Multer.File,
-    @Body() content: UploadDayContentDTO,
+    @Body() uploadFileDTO: UploadFileDTO,
   ) {
-    if (file.mimetype !== 'application/json') {
-      throw new InternalServerErrorException('Invalid file type');
+    // upload to AWS and return the link
+    if (!file) {
+      throw new BadRequestException('File not found in request');
     }
 
-    const result = await this.uploadService.uploadSingleFile(
-      file,
-      content.item_name, // Level_A1
-      content.stage, // Stage_2
-      content.day, // Day_22
-    );
+    const allowedMimeTypes = [
+      ...Object.values(AllowedAudioMimeTypes),
+      ...Object.values(AllowedImageMimeTypes),
+    ];
 
-    if (!result) {
-      throw new InternalServerErrorException();
+    if (!allowedMimeTypes.includes(file.mimetype as AllowedAudioMimeTypes)) {
+      throw new BadRequestException(
+        'Only mp3 and images files are allowed to be uploaded.',
+      );
     }
 
-    return {
-      message: 'File uploaded successfully',
-    };
+    console.log(uploadFileDTO);
+
+    return await this.uploadService.uploadSingleFile(file, uploadFileDTO);
   }
 
   @UseGuards(AdminGuard)
   @Delete('')
   async deleteFile(
-    @Body() content: UploadDayContentDTO,
+    @Body() content: UploadFileDTO,
     @Body('fileName') fileName: string,
   ) {
     return await this.uploadService.deleteFile(
       fileName,
-      content.item_name, // Level
-      content.stage,
+      content.level_name, // Level
       content.day,
     );
   }
 
   @Get('')
   async getContentByName(
-    @Body() content: UploadDayContentDTO,
+    @Body() content: UploadFileDTO,
     @Body('fileName') fileName: string,
   ) {
     const result = await this.uploadService.getContentByName(
       fileName,
-      content.item_name, // Level
-      content.stage, // stage_2
+      content.level_name, // Level
       content.day, // day_22
     );
 
