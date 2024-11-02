@@ -16,7 +16,7 @@ import { PaymentPostBodyCallback } from './types/callback';
 import { UsersService } from 'src/users/users.service';
 import { JwtAuthGuard } from 'src/auth/guard';
 import { Level_Name } from '../common/enums';
-import { readCoursesData } from '../util/file-data-courses';
+import { __readCoursesData } from '../util/file-data-courses';
 
 @Controller('payment')
 export class PaymobController {
@@ -58,7 +58,6 @@ export class PaymobController {
   ) {
     const user: UserWithId = req.user;
     const integration_id = parseInt(process.env.PAYMOB_INTEGRATION_ID, 10);
-    console.log('integration_id', integration_id);
 
     if (isNaN(integration_id)) {
       throw new BadRequestException('Invalid integration ID');
@@ -66,16 +65,13 @@ export class PaymobController {
 
     try {
       // Read the JSON object and pass it to the service method
-      const levelsData = readCoursesData();
+      // it reads the only file that already in the system
+      const levelsData = __readCoursesData();
 
       // Find the level by its name
       const level = levelsData.Levels.find(
         (lvl) => lvl.name === paymentIntention.item_name,
       );
-
-      if (!level) {
-        throw new BadRequestException('Level not found');
-      }
 
       const data = {
         amount: level.price,

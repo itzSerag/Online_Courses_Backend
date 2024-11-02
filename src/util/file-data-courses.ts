@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-export function readCoursesData(): any {
+export function __readCoursesData(): any {
   const basePath =
     process.env.NODE_ENV === 'production'
       ? path.join(__dirname, '..', 'data') // Production: use dist/data

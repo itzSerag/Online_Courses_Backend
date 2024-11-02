@@ -1,7 +1,12 @@
 import { IsEnum, IsNotEmpty, Matches } from 'class-validator';
 import { Level_Name } from '../../common/enums';
+import { LESSONS } from '../../common/enums/lessons';
 
 export class UploadFileDTO {
+  @IsNotEmpty()
+  @IsEnum(LESSONS)
+  lesson_name: LESSONS;
+
   @IsNotEmpty()
   @IsEnum(Level_Name)
   level_name: Level_Name;

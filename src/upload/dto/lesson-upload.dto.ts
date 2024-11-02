@@ -4,14 +4,14 @@ import {
   IsNotEmpty,
   IsString,
   Matches,
-  ValidateNested,
+  validate,
+  ValidationError,
 } from 'class-validator';
 import { LESSONS } from '../../common/enums/lessons';
-import { Type } from 'class-transformer';
 import { Level_Name } from '../../common/enums';
+import { BadRequestException } from '@nestjs/common';
 
-// NOT INTERFACES BECAUSE WE NEED TO VALIDATE THE DATA
-
+// Main DTO
 export class UploadDTO {
   @IsNotEmpty()
   @IsEnum(LESSONS)
@@ -21,26 +21,16 @@ export class UploadDTO {
   @IsEnum(Level_Name)
   level_name: string;
 
-  // want it from 1 to 50 only
+  // Only allows day from 1 to 50
   @IsNotEmpty()
   @Matches(/^([1-9]|[1-4][0-9]|50)$/)
   day: string;
 
   @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => Object)
-  content:
-    | READ[]
-    | PICTURES[]
-    | LISTEN[]
-    | Q_A[]
-    | WRITE[]
-    | SPEAK[]
-    | GRAMMAR[]
-    | DAILY_TEST[]
-    | IDIOMS[];
+  data: any[];
 }
 
+// Validation classes
 class READ {
   @IsString()
   @IsNotEmpty()
@@ -51,7 +41,17 @@ class READ {
   transcript: string;
 }
 
-// TESTING
+class WRITE {
+  @IsString()
+  @IsNotEmpty()
+  question: string;
+
+  @IsString()
+  @IsNotEmpty()
+  answer: string;
+}
+
+// Other classes
 class PICTURES {
   @IsString()
   @IsNotEmpty()
@@ -65,16 +65,6 @@ class LISTEN {
 }
 
 class Q_A {
-  @IsString()
-  @IsNotEmpty()
-  question: string;
-
-  @IsString()
-  @IsNotEmpty()
-  answer: string;
-}
-
-class WRITE {
   @IsString()
   @IsNotEmpty()
   question: string;
@@ -118,4 +108,47 @@ class IDIOMS {
   @IsString()
   @IsNotEmpty()
   meaning: string;
+}
+
+// Mapping from key to validation class
+const validationMap = {
+  READ,
+  WRITE,
+  PICTURES,
+  LISTEN,
+  Q_A,
+  SPEAK,
+  GRAMMAR,
+  DAILY_TEST,
+  IDIOMS,
+};
+
+export async function validateData(
+  key: LESSONS,
+  data: any[],
+): Promise<boolean> {
+  const ValidatorClass = validationMap[key];
+
+  if (!ValidatorClass) {
+    throw new Error(`No validation schema found for key: ${key}`);
+  }
+
+  const validationErrors: ValidationError[] = [];
+
+  // Validate each item in the data array
+  for (const item of data) {
+    const instance = Object.assign(new ValidatorClass(), item);
+    const errors = await validate(instance);
+    if (errors.length > 0) {
+      validationErrors.push(...errors);
+    }
+  }
+
+  if (validationErrors.length > 0) {
+    throw new BadRequestException(
+      'Please fill the data in a proper way as documented',
+    );
+  }
+
+  return true;
 }

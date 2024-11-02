@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { log } from 'console';
-import { UploadFileDTO } from './dto';
+import { UploadDTO, UploadFileDTO } from './dto';
 
 @Injectable()
 export class UploadService {
@@ -32,6 +32,31 @@ export class UploadService {
         secretAccessKey: this.configService.getOrThrow('AWS_SECRET_ACCESS_KEY'),
       },
     });
+  }
+
+  async upload(uploadDataDTO: UploadDTO) {
+    const key = `Levels/${uploadDataDTO.level_name}/${uploadDataDTO.day}/${uploadDataDTO.key}.json`;
+
+    // Convert the data array to a JSON string
+    log(JSON.stringify(uploadDataDTO.data));
+    const jsonData = JSON.stringify(uploadDataDTO.data);
+
+    try {
+      const command = new PutObjectCommand({
+        Bucket: this.AWS_S3_BUCKET,
+        Body: jsonData,
+        Key: key,
+        ContentType: 'application/json',
+      });
+
+      await this.S3Client.send(command).catch((error) => {
+        throw new InternalServerErrorException(error);
+      });
+
+      return { message: 'File uploaded successfully', key };
+    } catch (err) {
+      throw new InternalServerErrorException('Failed to upload file');
+    }
   }
 
   async uploadSingleFile(
@@ -72,7 +97,7 @@ export class UploadService {
         throw new InternalServerErrorException(error);
       });
 
-      return this.__getFileUrl(key, this.AWS_S3_BUCKET_RES);
+      return await this.__getFileUrl(key, this.AWS_S3_BUCKET_RES);
     } catch (err) {
       throw new InternalServerErrorException(err);
     }
@@ -98,7 +123,7 @@ export class UploadService {
   }
 
   async getContentByName(fileName: string, level_name: string, day: string) {
-    const key = `Levels/${level_name}/${day}/${fileName}`;
+    const key = `Levels/${level_name}/${day}/${fileName}.json`;
 
     try {
       const URL = await this.__getPresignedSignedUrl(key, this.AWS_S3_BUCKET);
@@ -108,7 +133,7 @@ export class UploadService {
       }
 
       const data = await fetch(URL.url);
-      return data.json();
+      return await data.json();
     } catch (error) {
       throw new InternalServerErrorException(error);
     }
@@ -125,7 +150,7 @@ export class UploadService {
       await this.S3Client.send(headCommand);
 
       const command = new GetObjectCommand({
-        Bucket: this.AWS_S3_BUCKET,
+        Bucket: bucket,
         Key: key,
       });
 

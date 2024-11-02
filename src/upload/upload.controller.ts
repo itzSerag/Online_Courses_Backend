@@ -11,7 +11,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { AdminGuard, JwtAuthGuard } from 'src/auth/guard';
-import { UploadFileDTO } from './dto';
+import { UploadDTO, UploadFileDTO, validateData } from './dto';
 import { UploadService } from './upload.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -24,10 +24,33 @@ import {
 export class UploadController {
   constructor(private uploadService: UploadService) {}
 
+  @Get('')
+  async getContentByName(@Body() content: UploadFileDTO) {
+    const result = await this.uploadService.getContentByName(
+      content.lesson_name,
+      content.level_name,
+      content.day,
+    );
+
+    if (!result) {
+      throw new NotFoundException(
+        `Can't find any file by this name : ${content.lesson_name}`,
+      );
+    }
+    return result;
+  }
+
+  @Post('')
+  @UseGuards(AdminGuard)
+  async upload(@Body() dataUploadDTO: UploadDTO) {
+    await validateData(dataUploadDTO.key, dataUploadDTO.data);
+    return await this.uploadService.upload(dataUploadDTO);
+  }
+
   @Post('single-file')
   @UseGuards(AdminGuard)
   @UseInterceptors(FileInterceptor('file'))
-  async upload(
+  async uploadSingleFile(
     @UploadedFile() file: Express.Multer.File,
     @Body() uploadFileDTO: UploadFileDTO,
   ) {
@@ -63,24 +86,5 @@ export class UploadController {
       content.level_name, // Level
       content.day,
     );
-  }
-
-  @Get('')
-  async getContentByName(
-    @Body() content: UploadFileDTO,
-    @Body('fileName') fileName: string,
-  ) {
-    const result = await this.uploadService.getContentByName(
-      fileName,
-      content.level_name, // Level
-      content.day, // day_22
-    );
-
-    if (!result) {
-      throw new NotFoundException(
-        `Can't find any file by this name : ${fileName}`,
-      );
-    }
-    return result;
   }
 }
