@@ -10,6 +10,7 @@ import {
   Injectable,
   InternalServerErrorException,
   NotAcceptableException,
+  NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { log } from 'console';
@@ -53,7 +54,7 @@ export class UploadService {
         throw new InternalServerErrorException(error);
       });
 
-      return { message: 'File uploaded successfully', key };
+      return { message: 'File uploaded successfully to', key };
     } catch (err) {
       throw new InternalServerErrorException('Failed to upload file');
     }
@@ -103,8 +104,8 @@ export class UploadService {
     }
   }
 
-  async deleteFile(fileName: string, level_name: string, day: string) {
-    const key = `Levels/${level_name}/${day}/${fileName}`;
+  async deleteFile(uploadFileDTO: UploadFileDTO) {
+    const key = `Levels/${uploadFileDTO.level_name}/${uploadFileDTO.day}/${uploadFileDTO.lesson_name}.json`;
 
     try {
       const command = new DeleteObjectCommand({
@@ -112,31 +113,30 @@ export class UploadService {
         Key: key,
       });
 
-      await this.S3Client.send(command).catch((err) => {
-        log(err);
+      const res = await this.S3Client.send(command).catch((err) => {
+        throw new InternalServerErrorException(
+          'cant delete the file now please try again later',
+        );
       });
 
-      return { message: 'File deleted successfully' };
+      return res;
     } catch (error) {
       throw new InternalServerErrorException(error + 'Cant Delete');
     }
   }
 
-  async getContentByName(fileName: string, level_name: string, day: string) {
-    const key = `Levels/${level_name}/${day}/${fileName}.json`;
-
-    try {
-      const URL = await this.__getPresignedSignedUrl(key, this.AWS_S3_BUCKET);
-
-      if (!URL) {
-        return null;
-      }
-
-      const data = await fetch(URL.url);
-      return await data.json();
-    } catch (error) {
-      throw new InternalServerErrorException(error);
+  async getContentByName(uploadFileDTO: UploadFileDTO) {
+    const key = `Levels/${uploadFileDTO.level_name}/${uploadFileDTO.day}/${uploadFileDTO.lesson_name}.json`;
+    const URL = await this.__getPresignedSignedUrl(key, this.AWS_S3_BUCKET);
+    if (!URL) {
+      return null;
     }
+    const data = await fetch(URL.url);
+    if (!data) {
+      return null;
+    }
+    const jsonData = await data.json();
+    return jsonData;
   }
 
   async __getPresignedSignedUrl(key: string, bucket: string) {
@@ -147,7 +147,9 @@ export class UploadService {
       });
 
       // will throw an erorr ifff the key does not exist
-      await this.S3Client.send(headCommand);
+      await this.S3Client.send(headCommand).catch((err) => {
+        throw new NotFoundException('File Not Exist !!');
+      });
 
       const command = new GetObjectCommand({
         Bucket: bucket,
@@ -158,9 +160,11 @@ export class UploadService {
         expiresIn: 60 * 60 * 24, // 24 hours
       });
 
-      return { url };
-    } catch (error) {
-      throw new InternalServerErrorException(error);
+      return { url: url };
+    } catch (err) {
+      throw new InternalServerErrorException(
+        'Something wrong happened please try again',
+      );
     }
   }
 

@@ -18,6 +18,7 @@ import {
   AllowedAudioMimeTypes,
   AllowedImageMimeTypes,
 } from './enum/file-mime-types.enum';
+import { log } from 'console';
 
 @UseGuards(JwtAuthGuard)
 @Controller('files')
@@ -26,17 +27,14 @@ export class UploadController {
 
   @Get('')
   async getContentByName(@Body() content: UploadFileDTO) {
-    const result = await this.uploadService.getContentByName(
-      content.lesson_name,
-      content.level_name,
-      content.day,
-    );
+    const result = await this.uploadService.getContentByName(content);
 
-    if (!result) {
+    if (!result || result.length == 0) {
       throw new NotFoundException(
-        `Can't find any file by this name : ${content.lesson_name}`,
+        `Can't find any file by this name or file is empty : ${content.lesson_name}`,
       );
     }
+
     return result;
   }
 
@@ -76,15 +74,15 @@ export class UploadController {
   }
 
   @UseGuards(AdminGuard)
-  @Delete('')
-  async deleteFile(
-    @Body() content: UploadFileDTO,
-    @Body('fileName') fileName: string,
-  ) {
-    return await this.uploadService.deleteFile(
-      fileName,
-      content.level_name, // Level
-      content.day,
-    );
+  @Delete()
+  async deleteFile(@Body() uploadFileDTO: UploadFileDTO) {
+    const res = await this.uploadService.deleteFile(uploadFileDTO);
+    if (!res) {
+      throw new NotFoundException(
+        `Can't find any file by this name : ${uploadFileDTO.lesson_name}`,
+      );
+    }
+    log(res);
+    return { message: 'File deleted successfully' };
   }
 }
