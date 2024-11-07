@@ -6,6 +6,7 @@ import {
   Get,
   NotFoundException,
   Post,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -26,7 +27,7 @@ export class UploadController {
   constructor(private uploadService: UploadService) {}
 
   @Get('')
-  async getContentByName(@Body() content: UploadFileDTO) {
+  async getContentByName(@Query() content: UploadFileDTO) {
     const result = await this.uploadService.getContentByName(content);
 
     if (!result || result.length == 0) {
