@@ -27,8 +27,6 @@ export class PaymobController {
 
   @Post('/callback')
   async callbackPost(@Body() data: PaymentPostBodyCallback) {
-    log('WE ARE IN POST Post');
-
     const success = data.obj.success;
     const orderId = data.obj.id;
     const userEmail = data.obj.order.shipping_data.email;
@@ -44,9 +42,9 @@ export class PaymobController {
       );
 
       return { userData };
-    } catch (e) {
+    } catch (err) {
       throw new InternalServerErrorException(
-        `Failed to handle callback : ${e.message}`,
+        `Failed to handle callback : ${err.message}`,
       );
     }
   }
@@ -119,7 +117,7 @@ export class PaymobController {
       req.user.id,
     );
 
-    // see if the user orders got this item that he want to refund or not
+    // if the user orders got this item that he want to refund or not
     if (
       userOrders.length === 0 ||
       !userOrders.some((order) => order.levelName === levelName)

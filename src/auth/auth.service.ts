@@ -2,6 +2,7 @@ import {
   Injectable,
   ConflictException,
   ForbiddenException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -33,35 +34,42 @@ export class AuthService {
     email: string,
     userPassword: string,
   ): Promise<UserWithoutPassword | null> {
-    const user = await this.userService.findByEmail(email);
+    try {
+      const user = await this.userService.findByEmail(email);
 
-    if (!user) {
-      return null;
+      if (!user) {
+        return null;
+      }
+
+      const isPasswordValid = await bcrypt.compare(userPassword, user.password);
+
+      if (!isPasswordValid) {
+        return null;
+      }
+
+      const payload: PayLoad = {
+        email: user.email,
+        roles: user.role,
+        sub: user.id,
+      };
+
+      const jwt = await this.generateToken(payload);
+
+      if (!user.isVerified) {
+        throw new ForbiddenException({
+          message: 'Please verify your account by entering the OTP',
+          access_token: jwt,
+        });
+      }
+
+      const { password, ...userWithoutPassword } = user;
+      return userWithoutPassword;
+    } catch (error) {
+      if (error instanceof ForbiddenException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Authentication failed');
     }
-
-    const isPasswordValid = await bcrypt.compare(userPassword, user.password);
-    log(isPasswordValid);
-    if (user && !isPasswordValid) {
-      return null;
-    }
-
-    const payload: PayLoad = {
-      email: user.email,
-      roles: user.role,
-      sub: user.id,
-    };
-
-    const jwt = await this.generateToken(payload);
-
-    if (!user.isVerified) {
-      throw new ForbiddenException({
-        message: 'Account not verified please enter the otp',
-        access_token: jwt,
-      });
-    }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password, ...userWithoutPassword } = user;
-    return userWithoutPassword;
   }
 
   /// UTILS -- generate and create otp

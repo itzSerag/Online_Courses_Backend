@@ -12,6 +12,8 @@ import {
   ForbiddenException,
   ParseIntPipe,
   Query,
+  BadRequestException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { AdminGuard } from 'src/auth/guard/admin.guard';
 import { JwtAuthGuard } from 'src/auth/guard/jwt.auth.guard';
@@ -20,6 +22,7 @@ import { SignUpDto, UpdateUserDto } from '../auth/dto';
 import { UserWithoutPassword as User } from './types'; // Assuming you have a User entity
 import { UserFinishDay, UserTask } from './dto';
 import { Level_Name } from '../common/enums';
+import { CurUser } from './decorators/get-user.decorator';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
@@ -27,8 +30,8 @@ export class UsersController {
   constructor(private userService: UsersService) {}
 
   @Get('/me')
-  getMe(@Req() req): User {
-    return req.user;
+  getMe(@CurUser() user: User): User {
+    return user;
   }
 
   @Get('email/:email')
@@ -49,8 +52,8 @@ export class UsersController {
   }
 
   @Get('/levels')
-  async getLevels(@Req() req) {
-    const res = await this.userService.getUserOrders(req.user.id);
+  async getLevels(@CurUser() user: User) {
+    const res = await this.userService.getUserOrders(user.id);
 
     return res.map((order) => order.levelName);
   }
@@ -58,26 +61,27 @@ export class UsersController {
   @Get('/completed-days')
   async getCompletedDaysInLevel(
     @Query('levelName') levelName: Level_Name,
-    @Req() req,
+    @CurUser() user: User,
   ) {
-    console.log('into this');
-    const res = this.userService.getCompletedDaysInLevel(
-      req.user.id,
-      levelName,
-    );
+    const res = this.userService.getCompletedDaysInLevel(user.id, levelName);
     return res;
   }
 
   @Get('/completed-tasks')
-  async getCompletedTasksInDay(@Query() userTask: UserTask, @Req() req) {
+  async getCompletedTasksInDay(
+    @Query() userTask: UserTask,
+    @CurUser('id') userId: number,
+  ) {
     const res = this.userService.getCompletedTasksInDay(
-      req.user.id,
+      userId,
       userTask.levelName,
       Number(userTask.day),
     );
 
     return res;
   }
+
+  // create user by admin
   @Post('/')
   @UseGuards(AdminGuard)
   createUser(@Body() createUserDto: SignUpDto): Promise<User> {
@@ -85,6 +89,7 @@ export class UsersController {
   }
 
   @Get('/:id')
+  @UseGuards(AdminGuard)
   async getUserById(@Param('id', ParseIntPipe) id: number): Promise<User> {
     const user = await this.userService.findById(id);
     return user;
@@ -124,16 +129,34 @@ export class UsersController {
 
   @Post('/complete-task')
   async markTaskAsCompleted(@Body() taskFinished: UserTask, @Req() req) {
-    if (taskFinished.day > 50) {
-      throw new ForbiddenException('Day cannot be greater than 50');
-    }
-    const res = await this.userService.markTaskAsCompleted(
-      req.user.id,
-      taskFinished.levelName,
-      Number(taskFinished.day),
-      taskFinished.taskName,
-    );
+    try {
+      if (!taskFinished.day || taskFinished.day < 1) {
+        throw new BadRequestException('Day must be a positive number');
+      }
 
-    return res;
+      if (taskFinished.day > 50) {
+        throw new BadRequestException('Day cannot be greater than 50');
+      }
+
+      if (!taskFinished.levelName || !taskFinished.taskName) {
+        throw new BadRequestException('Level name and task name are required');
+      }
+
+      const result = await this.userService.markTaskAsCompleted(
+        req.user.id,
+        taskFinished.levelName,
+        Number(taskFinished.day),
+        taskFinished.taskName,
+      );
+
+      return result;
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to mark task as completed',
+      );
+    }
   }
 }

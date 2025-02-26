@@ -12,6 +12,7 @@ export class PrismaService
     super();
   }
 
+  // just when the module is inistatiate it, it connects
   async onModuleInit() {
     await this.$connect();
   }

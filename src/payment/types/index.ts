@@ -1,2 +1,2 @@
 export * from './payment.type';
-export * from './callback'
+export * from './callback';

@@ -25,7 +25,7 @@ export class IsVerifiedGuard implements CanActivate {
       console.log('User not found in request.');
       throw new UnauthorizedException('User not authenticated.');
     }
-  
+
     console.log('User verified:', user.isVerified);
 
     if (!user.isVerified) {

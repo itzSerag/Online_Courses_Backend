@@ -1,4 +1,11 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  Injectable,
+  HttpException,
+  HttpStatus,
+  BadRequestException,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentRequest, PaymentStatus } from './types';
@@ -59,40 +66,52 @@ export class PaymobService {
 
   async processOrder(paymentRequest: PaymentRequest, userId: number) {
     try {
+      // Validate input
+      if (!paymentRequest?.items?.length || !paymentRequest.items[0].name) {
+        throw new BadRequestException(
+          'Invalid payment request: missing items or item name',
+        );
+      }
+
+      const levelName = paymentRequest.items[0].name as Level_Name;
+
+      // Check for existing completed order
       const existingCompletedOrder = await this.prisma.order.findFirst({
         where: {
           userId,
-          levelName: paymentRequest.items[0].name as Level_Name,
+          levelName,
           paymentStatus: PaymentStatus.COMPLETED,
         },
       });
 
-      // check if the user had this course before or not - delete it and continue the flow
       if (existingCompletedOrder) {
-        throw new HttpException(
-          'User has already completed payment for this level',
-          HttpStatus.BAD_REQUEST,
+        throw new BadRequestException(
+          'Payment already completed for this level',
         );
       }
 
+      // Create payment intention
       const dataUserPaymentIntention =
         await this.createIntention(paymentRequest);
-      const clientSecretToken = dataUserPaymentIntention.client_secret;
-      // MAY NEED TO CHANGE THIS URL -- not hard coded it
-      const clientURL = `https://accept.paymob.com/unifiedcheckout/?publicKey=${this.PAYMOB_PUBLIC_KEY}&clientSecret=${clientSecretToken}`;
+      if (!dataUserPaymentIntention?.client_secret) {
+        throw new InternalServerErrorException(
+          'Failed to create payment intention',
+        );
+      }
 
-      // before create the order check if the user has the same order before
+      const clientURL = `https://accept.paymob.com/unifiedcheckout/?publicKey=${this.PAYMOB_PUBLIC_KEY}&clientSecret=${dataUserPaymentIntention.client_secret}`;
 
+      // Create or update order record
       await this.prisma.order.upsert({
         where: {
           userId_levelName: {
             userId,
-            levelName: paymentRequest.items[0].name,
+            levelName,
           },
         },
         create: {
           userId,
-          levelName: paymentRequest.items[0].name as Level_Name,
+          levelName,
           amountCents: paymentRequest.amount,
           paymentStatus: PaymentStatus.PENDING,
           createdAt: new Date(),
@@ -106,9 +125,11 @@ export class PaymobService {
 
       return clientURL;
     } catch (error) {
-      throw new HttpException(
-        'Failed to process order: ' + error.message,
-        HttpStatus.INTERNAL_SERVER_ERROR,
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Payment processing failed: ${error.message}`,
       );
     }
   }
@@ -120,31 +141,33 @@ export class PaymobService {
     userEmail: string,
   ) {
     try {
+      if (!userEmail) {
+        throw new BadRequestException('User email is required');
+      }
+
       const user = await this.prisma.user.findUnique({
         where: { email: userEmail },
       });
 
-      // Find the most recent pending order for this user
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
       const pendingOrder = await this.prisma.order.findFirst({
         where: {
           userId: user.id,
           amountCents: amount,
           paymentStatus: PaymentStatus.PENDING,
         },
-        // the most recent order
         orderBy: {
           createdAt: 'desc',
         },
       });
 
       if (!pendingOrder) {
-        throw new HttpException(
-          'No matching pending order found',
-          HttpStatus.NOT_FOUND,
-        );
+        throw new NotFoundException('No matching pending order found');
       }
 
-      // Update the order
       const updatedOrder = await this.prisma.order.update({
         where: { id: pendingOrder.id },
         data: {
@@ -156,7 +179,6 @@ export class PaymobService {
         include: { user: true },
       });
 
-      // If payment was successful, update UserLevel
       if (success) {
         await this.prisma.userLevel.create({
           data: {
@@ -165,11 +187,17 @@ export class PaymobService {
           },
         });
       }
+
       return success;
     } catch (error) {
-      throw new HttpException(
-        `Failed to process callback: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Failed to process payment callback: ${error.message}`,
       );
     }
   }

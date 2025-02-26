@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PayLoad } from '../dto';
@@ -13,21 +13,26 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       secretOrKey: process.env.JWT_SECRET,
     });
   }
+
   async validate(payload: PayLoad) {
-    console.log('payload', payload);
+    try {
+      const user = await this.userService.findByEmail(payload.email);
 
-    const result = await this.userService.findByEmail(payload.email);
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
 
-    if (!result) {
-      return null;
+      if (!user.isVerified) {
+        throw new UnauthorizedException('User account is not verified');
+      }
+
+      const { password, ...userWithoutPassword } = user;
+      return userWithoutPassword;
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new UnauthorizedException('Invalid token');
     }
-
-    if (!result.isVerified) {
-      return null;
-    }
-    // destructuring password from the result object and returning the rest of the object
-    const { password, ...userWithoutPassword } = result;
-
-    return userWithoutPassword;
   }
 }

@@ -13,8 +13,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { log } from 'console';
 import { UploadDTO, UploadFileDTO } from './dto';
+import { log } from 'console';
 
 @Injectable()
 export class UploadService {
@@ -39,7 +39,6 @@ export class UploadService {
     const key = `Levels/${uploadDataDTO.level_name}/${uploadDataDTO.day}/${uploadDataDTO.key}.json`;
 
     // Convert the data array to a JSON string
-    log(JSON.stringify(uploadDataDTO.data));
     const jsonData = JSON.stringify(uploadDataDTO.data);
 
     try {
@@ -65,42 +64,65 @@ export class UploadService {
     uploadFileDTO: UploadFileDTO,
   ) {
     if (!file) {
+      throw new NotAcceptableException('File is required');
+    }
+
+    const fileTypePath = this.determineFileType(file.mimetype);
+    if (!fileTypePath) {
       throw new NotAcceptableException(
-        'file not found in request or something wrong happened',
+        'Unsupported file type. Only images and audio files are allowed.',
       );
     }
 
-    let fileTypePath = '';
-    if (file.mimetype.includes('image')) {
-      fileTypePath = 'Images';
-    }
-
-    if (!fileTypePath) {
-      if (file.mimetype.includes('audio')) {
-        fileTypePath = 'Audio';
-      }
-    }
-
-    const levelName = uploadFileDTO.level_name;
-    const key = `${fileTypePath}/${levelName}/${uploadFileDTO.day}/${file.originalname}`;
+    const key = this.generateFileKey(
+      fileTypePath,
+      uploadFileDTO,
+      file.originalname,
+    );
 
     try {
-      const command = new PutObjectCommand({
-        Bucket: this.AWS_S3_BUCKET_RES,
-        Body: file.buffer,
-        // file path
-        Key: key,
-        ACL: 'public-read',
-      });
-
-      await this.S3Client.send(command).catch((error) => {
-        log('something went wrong while uploading the file');
-        throw new InternalServerErrorException(error);
-      });
-
+      await this.uploadToS3(file, key);
       return await this.__getFileUrl(key, this.AWS_S3_BUCKET_RES);
-    } catch (err) {
-      throw new InternalServerErrorException(err);
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `Failed to upload file: ${error.message}`,
+      );
+    }
+  }
+
+  private determineFileType(mimetype: string): string | null {
+    if (mimetype.includes('image')) {
+      return 'Images';
+    }
+    if (mimetype.includes('audio')) {
+      return 'Audio';
+    }
+    return null;
+  }
+
+  private generateFileKey(
+    fileTypePath: string,
+    uploadFileDTO: UploadFileDTO,
+    originalName: string,
+  ): string {
+    return `${fileTypePath}/${uploadFileDTO.level_name}/${uploadFileDTO.day}/${originalName}`;
+  }
+
+  private async uploadToS3(
+    file: Express.Multer.File,
+    key: string,
+  ): Promise<void> {
+    const command = new PutObjectCommand({
+      Bucket: this.AWS_S3_BUCKET_RES,
+      Body: file.buffer,
+      Key: key,
+      ACL: 'public-read',
+    });
+
+    try {
+      await this.S3Client.send(command);
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to upload file to S3');
     }
   }
 
@@ -114,8 +136,9 @@ export class UploadService {
       });
 
       const res = await this.S3Client.send(command).catch((err) => {
+        log(err);
         throw new InternalServerErrorException(
-          'cant delete the file now please try again later',
+          'can not delete the file now please try again later',
         );
       });
 
@@ -146,9 +169,9 @@ export class UploadService {
         Key: key,
       });
 
-      // will throw an erorr ifff the key does not exist
+      // will throw an error ifff the key does not exist
       await this.S3Client.send(headCommand).catch((err) => {
-        throw new NotFoundException('File Not Exist !!');
+        throw new NotFoundException(`File Not Exist !! ${err.message}`);
       });
 
       const command = new GetObjectCommand({
