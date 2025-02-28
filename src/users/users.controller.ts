@@ -33,7 +33,7 @@ export class UsersController {
   getMe(@CurUser() user: User): User {
     return user;
   }
-
+  
   @Get('email/:email')
   @UseGuards(AdminGuard)
   async getUserByEmail(@Param('email') email: string): Promise<User> {
