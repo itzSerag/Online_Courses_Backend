@@ -1,5 +1,4 @@
 import {
-  IsArray,
   IsEnum,
   IsNotEmpty,
   IsString,
@@ -19,23 +18,22 @@ export class UploadDTO {
 
   @IsNotEmpty()
   @IsEnum(Level_Name)
-  level_name: string;
+  level_name: Level_Name;
 
   // Only allows day from 1 to 50
   @IsNotEmpty()
   @Matches(/^([1-9]|[1-4][0-9]|50)$/)
   day: string;
 
-  @IsArray()
+  @IsString()
   data: any[];
+
+  // Optional file data that will be populated by the controller
+  file?: Express.Multer.File;
 }
 
 // Validation classes
 class READ {
-  @IsString()
-  @IsNotEmpty()
-  soundSrc: string;
-
   @IsString()
   @IsNotEmpty()
   transcript: string;
@@ -51,17 +49,12 @@ class WRITE {
   answer: string;
 }
 
-// Other classes
 class PICTURES {
-  @IsString()
-  @IsNotEmpty()
-  pictureSrc: string;
+  // No validation needed as picture will be uploaded
 }
 
 class LISTEN {
-  @IsString()
-  @IsNotEmpty()
-  soundSrc: string;
+  // No validation needed as audio will be uploaded
 }
 
 class Q_A {
@@ -77,7 +70,7 @@ class Q_A {
 class SPEAK {
   @IsString()
   @IsNotEmpty()
-  soundSrc: string;
+  text: string;
 }
 
 class GRAMMAR {
@@ -131,6 +124,11 @@ export async function validateData(
 
   if (!ValidatorClass) {
     throw new Error(`No validation schema found for key: ${key}`);
+  }
+
+  // Skip validation for PICTURES and LISTEN as they only need files
+  if (key === LESSONS.PICTURES || key === LESSONS.LISTEN) {
+    return true;
   }
 
   const validationErrors: ValidationError[] = [];

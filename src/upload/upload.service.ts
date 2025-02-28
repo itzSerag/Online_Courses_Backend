@@ -11,6 +11,7 @@ import {
   InternalServerErrorException,
   NotAcceptableException,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { UploadDTO, UploadFileDTO } from './dto';
@@ -36,57 +37,83 @@ export class UploadService {
   }
 
   async upload(uploadDataDTO: UploadDTO) {
-    const key = `Levels/${uploadDataDTO.level_name}/${uploadDataDTO.day}/${uploadDataDTO.key}.json`;
-
-    // Convert the data array to a JSON string
-    const jsonData = JSON.stringify(uploadDataDTO.data);
-
     try {
+      // Handle file upload first if present
+      let fileUrl: string | undefined;
+      if (uploadDataDTO.file) {
+        const fileTypePath = this.determineFileType(uploadDataDTO.file.mimetype);
+        if (!fileTypePath) {
+          throw new NotAcceptableException('Unsupported file type. Only images and audio files are allowed.');
+        }
+
+        const fileKey = this.generateFileKey(fileTypePath, {
+          level_name: uploadDataDTO.level_name,
+          day: uploadDataDTO.day,
+          lesson_name: uploadDataDTO.key
+        }, uploadDataDTO.file.originalname);
+
+        await this.uploadToS3(uploadDataDTO.file, fileKey);
+        const fileUrlResponse = await this.__getFileUrl(fileKey, this.AWS_S3_BUCKET_RES);
+        fileUrl = fileUrlResponse.url;
+      }
+
+      // For PICTURES and LISTEN, we need a file
+      if ((uploadDataDTO.key === 'PICTURES' || uploadDataDTO.key === 'LISTEN') && !fileUrl) {
+        throw new BadRequestException(`File upload is required for ${uploadDataDTO.key} lessons`);
+      }
+
+      // Handle JSON data upload
+      const dataKey = `Levels/${uploadDataDTO.level_name}/${uploadDataDTO.day}/${uploadDataDTO.key}.json`;
+      
+      // Add the file URL to the data based on the lesson type
+      let processedData = [...uploadDataDTO.data];
+      if (fileUrl) {
+        switch (uploadDataDTO.key) {
+          case 'PICTURES':
+            processedData = [{ pictureSrc: fileUrl }];
+            break;
+          case 'LISTEN':
+            processedData = [{ soundSrc: fileUrl }];
+            break;
+          case 'READ':
+            processedData = processedData.map(item => ({
+              ...item,
+              soundSrc: fileUrl
+            }));
+            break;
+          case 'SPEAK':
+            processedData = processedData.map(item => ({
+              ...item,
+              soundSrc: fileUrl
+            }));
+            break;
+          default:
+            // For other types, we don't modify the data
+            break;
+        }
+      }
+
+      const jsonData = JSON.stringify(processedData);
+
       const command = new PutObjectCommand({
         Bucket: this.AWS_S3_BUCKET,
         Body: jsonData,
-        Key: key,
+        Key: dataKey,
         ContentType: 'application/json',
       });
 
-      await this.S3Client.send(command).catch((error) => {
-        throw new InternalServerErrorException(error);
-      });
+      await this.S3Client.send(command);
 
-      return { message: 'File uploaded successfully to', key };
-    } catch (err) {
-      throw new InternalServerErrorException('Failed to upload file');
-    }
-  }
-
-  async uploadSingleFile(
-    file: Express.Multer.File,
-    uploadFileDTO: UploadFileDTO,
-  ) {
-    if (!file) {
-      throw new NotAcceptableException('File is required');
-    }
-
-    const fileTypePath = this.determineFileType(file.mimetype);
-    if (!fileTypePath) {
-      throw new NotAcceptableException(
-        'Unsupported file type. Only images and audio files are allowed.',
-      );
-    }
-
-    const key = this.generateFileKey(
-      fileTypePath,
-      uploadFileDTO,
-      file.originalname,
-    );
-
-    try {
-      await this.uploadToS3(file, key);
-      return await this.__getFileUrl(key, this.AWS_S3_BUCKET_RES);
+      return {
+        message: 'Upload completed successfully',
+        dataKey,
+        fileUrl
+      };
     } catch (error) {
-      throw new InternalServerErrorException(
-        `Failed to upload file: ${error.message}`,
-      );
+      if (error instanceof NotAcceptableException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(`Failed to upload: ${error.message}`);
     }
   }
 

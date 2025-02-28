@@ -12,6 +12,8 @@ import { UserWithId, UserWithoutPassword } from './types';
 import { PaymentStatus } from 'src/payment/types';
 import { Level_Name } from '../common/enums';
 
+
+
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
@@ -77,6 +79,9 @@ export class UsersService {
     data: Partial<UserWithId>,
   ): Promise<UserWithoutPassword> {
     try {
+
+
+      // if - 123456  
       // If updating password, hash it before saving
       if (data.password) {
         data.password = await bcrypt.hash(data.password, 10);

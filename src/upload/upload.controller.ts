@@ -10,15 +10,14 @@ import {
   UploadedFile,
   UseGuards,
   UseInterceptors,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
 } from '@nestjs/common';
 import { AdminGuard, JwtAuthGuard } from 'src/auth/guard';
 import { UploadDTO, UploadFileDTO, validateData } from './dto';
 import { UploadService } from './upload.service';
 import { FileInterceptor } from '@nestjs/platform-express';
-import {
-  AllowedAudioMimeTypes,
-  AllowedImageMimeTypes,
-} from './enum/file-mime-types.enum';
 import { log } from 'console';
 
 @UseGuards(JwtAuthGuard)
@@ -41,38 +40,52 @@ export class UploadController {
 
   @Post('')
   @UseGuards(AdminGuard)
-  async upload(@Body() dataUploadDTO: UploadDTO) {
-    await validateData(dataUploadDTO.key, dataUploadDTO.data);
-    return await this.uploadService.upload(dataUploadDTO);
-  }
-
-  @Post('single-file')
-  @UseGuards(AdminGuard)
   @UseInterceptors(FileInterceptor('file'))
-  async uploadSingleFile(
-    @UploadedFile() file: Express.Multer.File,
-    @Body() uploadFileDTO: UploadFileDTO,
+  async upload(
+    @Body() dataUploadDTO: UploadDTO,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 1024 * 1024 * 20 }), // 20MB
+          new FileTypeValidator({ fileType: '.(png|jpeg|jpg|gif|mp3|wav|mp4)' }),
+        ],
+        fileIsRequired: false,
+      }),
+    )
+    file?: Express.Multer.File,
   ) {
-    // upload to AWS and return the link
-    if (!file) {
-      throw new BadRequestException('File not found in request');
+    try {
+      // Ensure data is parsed as an array
+      if (typeof dataUploadDTO.data === 'string') {
+        try {
+          dataUploadDTO.data = JSON.parse(dataUploadDTO.data);
+        } catch (error) {
+          throw new BadRequestException('Invalid JSON data format');
+        }
+      }
+
+      // Additional check to ensure data is an array
+      if (!Array.isArray(dataUploadDTO.data)) {
+        dataUploadDTO.data = [dataUploadDTO.data];
+      }
+
+      // Validate the data structure
+      await validateData(dataUploadDTO.key, dataUploadDTO.data);
+
+      // Attach the file to the DTO if present
+      if (file) {
+        dataUploadDTO.file = file;
+      }
+
+      return await this.uploadService.upload(dataUploadDTO);
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException(`Upload failed: ${error.message}`);
     }
-
-    const allowedMimeTypes = [
-      ...Object.values(AllowedAudioMimeTypes),
-      ...Object.values(AllowedImageMimeTypes),
-    ];
-
-    if (!allowedMimeTypes.includes(file.mimetype as AllowedAudioMimeTypes)) {
-      throw new BadRequestException(
-        'Only mp3 and images files are allowed to be uploaded.',
-      );
-    }
-
-    console.log(uploadFileDTO);
-
-    return await this.uploadService.uploadSingleFile(file, uploadFileDTO);
   }
+
 
   @UseGuards(AdminGuard)
   @Delete()
@@ -86,4 +99,7 @@ export class UploadController {
     log(res);
     return { message: 'File deleted successfully' };
   }
+
+
+  
 }
