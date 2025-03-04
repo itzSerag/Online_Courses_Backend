@@ -36,6 +36,8 @@ export class UploadController {
     return result;
   }
 
+
+  // now this is about uploading and Inserting data 
   @Post('')
   @UseGuards(AdminGuard)
   async upload(@Body() dataUploadDTO: UploadDTO) {
@@ -56,8 +58,8 @@ export class UploadController {
     }
 
 
-    await validateData(dataUploadDTO.key, dataUploadDTO.data);
-    return await this.uploadService.upload(dataUploadDTO);
+    await validateData(dataUploadDTO.lesson_name, dataUploadDTO.data);
+    return await this.uploadService.insertIntoJsonDataArray(dataUploadDTO);
   }
 
 
@@ -65,9 +67,11 @@ export class UploadController {
   @UseGuards(AdminGuard)
   @UseInterceptors(FileInterceptor('file', {
     limits: {
-      fileSize: 20 * 1024 * 1024
+      fileSize: 20 * 1024 * 1024 // 20mb
     }
   }))
+
+  // returns a link of the file in aws to put it within the request
   async uploadSingleFile(
     @UploadedFile() file: Express.Multer.File,
     @Body() uploadFileDTO: UploadFileDTO,
@@ -84,16 +88,44 @@ export class UploadController {
 
     if (!allowedMimeTypes.includes(file.mimetype as AllowedAudioMimeTypes)) {
       throw new BadRequestException(
-        'Only mp3 and images files are allowed to be uploaded.',
+        'Only Audio and images files are allowed to be uploaded.',
       );
     }
 
     console.log(uploadFileDTO);
-
     return await this.uploadService.uploadSingleFile(file, uploadFileDTO);
   }
 
 
+  // delete an obj in data array
+  @UseGuards(AdminGuard)
+  @Delete('delete-obj')
+  async deleteFromJsonDataArray(
+    @Body() dataUploadDTO: UploadDTO,
+    @Query('objectId') objectId: string) {
+
+    if (typeof dataUploadDTO.data === 'string') {
+      try {
+        dataUploadDTO.data = JSON.parse(dataUploadDTO.data);
+      } catch (error) {
+        throw new BadRequestException('Invalid JSON data format');
+      }
+    }
+
+    // Additional check to ensure data is an array
+    if (!Array.isArray(dataUploadDTO.data)) {
+      dataUploadDTO.data = [dataUploadDTO.data];
+    }
+
+
+    await validateData(dataUploadDTO.lesson_name, dataUploadDTO.data);
+    return await this.uploadService.deleteFromJsonDataArray(dataUploadDTO, objectId);
+
+  }
+
+
+
+  // delete the whole file
   @UseGuards(AdminGuard)
   @Delete()
   async deleteFile(@Body() uploadFileDTO: UploadFileDTO) {

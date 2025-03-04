@@ -2,7 +2,9 @@ import {
   IsArray,
   IsEnum,
   IsNotEmpty,
+  IsOptional,
   IsString,
+  IsUUID,
   Matches,
   validate,
   ValidationError,
@@ -13,9 +15,11 @@ import { BadRequestException } from '@nestjs/common';
 
 // Main DTO
 export class UploadDTO {
+
+
   @IsNotEmpty()
   @IsEnum(LESSONS)
-  key: LESSONS;
+  lesson_name: LESSONS;
 
   @IsNotEmpty()
   @IsEnum(Level_Name)
@@ -26,20 +30,35 @@ export class UploadDTO {
   @Matches(/^([1-9]|[1-4][0-9]|50)$/)
   day: string;
 
-  @IsString()
+  @IsArray()
   data: any[];
 }
 
-  // EVERY OBJ should look like that
+// EVERY OBJ should look like that
 
 // Validation classes
 class READ {
+
+
+  @IsOptional()
+  @IsUUID()
+  @IsNotEmpty()
+  id?: string
+
   @IsString()
   @IsNotEmpty()
   transcript: string;
 }
 
 class WRITE {
+
+
+  @IsOptional()
+  @IsUUID()
+  @IsNotEmpty()
+  id?: string
+
+
   @IsString()
   @IsNotEmpty()
   question: string;
@@ -50,6 +69,11 @@ class WRITE {
 }
 
 class PICTURES {
+
+  @IsOptional()
+  @IsUUID()
+  @IsNotEmpty()
+  id?: string
 
   @IsString()
   @IsNotEmpty()
