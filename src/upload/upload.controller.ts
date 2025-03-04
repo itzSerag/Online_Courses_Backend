@@ -7,24 +7,22 @@ import {
   NotFoundException,
   Post,
   Query,
-  UploadedFiles,
   UseGuards,
   UseInterceptors,
-  ParseFilePipe,
+  UploadedFile,
 } from '@nestjs/common';
 import { AdminGuard, JwtAuthGuard } from 'src/auth/guard';
 import { UploadDTO, UploadFileDTO, validateData } from './dto';
 import { UploadService } from './upload.service';
-import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { log } from 'console';
+import { AllowedAudioMimeTypes, AllowedImageMimeTypes } from './enum';
 
 @UseGuards(JwtAuthGuard)
 @Controller('files')
 export class UploadController {
-  constructor(private uploadService: UploadService) {}
+  constructor(private uploadService: UploadService) { }
 
-
-  
   @Get('')
   async getContentByName(@Query() content: UploadFileDTO) {
     const result = await this.uploadService.getContentByName(content);
@@ -40,49 +38,59 @@ export class UploadController {
 
   @Post('')
   @UseGuards(AdminGuard)
-  @UseInterceptors(
-    FileFieldsInterceptor([
-      { name: 'pictureSrc', maxCount: 1 },
-      { name: 'soundSrc', maxCount: 1 },
-    ])
-  )
-  async upload(
-    @Body() dataUploadDTO: UploadDTO,
-    @UploadedFiles(
-      new ParseFilePipe({
-        fileIsRequired: false,
-      }),
-    )
-    files: {
-      picture?: Express.Multer.File[];
-      audio?: Express.Multer.File[];
-    },
-  ) {
-    try {
-      // Ensure data is parsed as an array
-      if (typeof dataUploadDTO.data === 'string') {
-        try {
-          dataUploadDTO.data = JSON.parse(dataUploadDTO.data);
-        } catch (error) {
-          throw new BadRequestException('Invalid JSON data format');
-        }
-      }
+  async upload(@Body() dataUploadDTO: UploadDTO) {
 
-      // Additional check to ensure data is an array
-      if (!Array.isArray(dataUploadDTO.data)) {
-        dataUploadDTO.data = [dataUploadDTO.data];
-      }
 
-      // Validate the data structure
-      await validateData(dataUploadDTO.key, dataUploadDTO.data);
-
-      return await this.uploadService.upload(dataUploadDTO, files);
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
+    // ensure the data is parsed as array
+    if (typeof dataUploadDTO.data === 'string') {
+      try {
+        dataUploadDTO.data = JSON.parse(dataUploadDTO.data);
+      } catch (error) {
+        throw new BadRequestException('Invalid JSON data format');
       }
-      throw new BadRequestException(`Upload failed: ${error.message}`);
     }
+
+    // Additional check to ensure data is an array
+    if (!Array.isArray(dataUploadDTO.data)) {
+      dataUploadDTO.data = [dataUploadDTO.data];
+    }
+
+
+    await validateData(dataUploadDTO.key, dataUploadDTO.data);
+    return await this.uploadService.upload(dataUploadDTO);
+  }
+
+
+  @Post('single-file')
+  @UseGuards(AdminGuard)
+  @UseInterceptors(FileInterceptor('file', {
+    limits: {
+      fileSize: 20 * 1024 * 1024
+    }
+  }))
+  async uploadSingleFile(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() uploadFileDTO: UploadFileDTO,
+  ) {
+    // upload to AWS and return the link
+    if (!file) {
+      throw new BadRequestException('File not found in request');
+    }
+
+    const allowedMimeTypes = [
+      ...Object.values(AllowedAudioMimeTypes),
+      ...Object.values(AllowedImageMimeTypes),
+    ];
+
+    if (!allowedMimeTypes.includes(file.mimetype as AllowedAudioMimeTypes)) {
+      throw new BadRequestException(
+        'Only mp3 and images files are allowed to be uploaded.',
+      );
+    }
+
+    console.log(uploadFileDTO);
+
+    return await this.uploadService.uploadSingleFile(file, uploadFileDTO);
   }
 
 
@@ -100,5 +108,5 @@ export class UploadController {
   }
 
 
-  
+
 }

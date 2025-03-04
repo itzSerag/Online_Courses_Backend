@@ -11,7 +11,6 @@ import {
   InternalServerErrorException,
   NotAcceptableException,
   NotFoundException,
-  BadRequestException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { UploadDTO, UploadFileDTO } from './dto';
@@ -36,119 +35,59 @@ export class UploadService {
     });
   }
 
-  async upload(
-    uploadDataDTO: UploadDTO,
-    files: {
-      picture?: Express.Multer.File[];
-      audio?: Express.Multer.File[];
-    }
-  ) {
+  async upload(uploadDataDTO: UploadDTO) {
+    const key = `Levels/${uploadDataDTO.level_name}/${uploadDataDTO.day}/${uploadDataDTO.key}.json`;
+
+    // Convert the data array to a JSON string
+    const jsonData = JSON.stringify(uploadDataDTO.data);
+
     try {
-      // Handle file uploads first if present
-      let pictureUrl: string | undefined;
-      let audioUrl: string | undefined;
-
-      if (files) {
-        // Handle picture file
-        if (files.picture?.[0]) {
-          const fileKey = this.generateFileKey(
-            'Images',
-            {
-              level_name: uploadDataDTO.level_name,
-              day: uploadDataDTO.day,
-              lesson_name: uploadDataDTO.key
-            },
-            files.picture[0].originalname
-          );
-
-          await this.uploadToS3(files.picture[0], fileKey);
-          const pictureUrlResponse = await this.__getFileUrl(fileKey, this.AWS_S3_BUCKET_RES);
-          pictureUrl = pictureUrlResponse.url;
-        }
-
-        // Handle audio file
-        if (files.audio?.[0]) {
-          const fileKey = this.generateFileKey(
-            'Audio',
-            {
-              level_name: uploadDataDTO.level_name,
-              day: uploadDataDTO.day,
-              lesson_name: uploadDataDTO.key
-            },
-            files.audio[0].originalname
-          );
-
-          await this.uploadToS3(files.audio[0], fileKey);
-          const audioUrlResponse = await this.__getFileUrl(fileKey, this.AWS_S3_BUCKET_RES);
-          audioUrl = audioUrlResponse.url;
-        }
-      }
-
-      // For PICTURES, we need both picture and audio files
-      if (uploadDataDTO.key === 'PICTURES' && (!pictureUrl || !audioUrl)) {
-        throw new BadRequestException('Both picture and audio files are required for PICTURES lessons');
-      }
-
-      // Handle JSON data upload
-      const dataKey = `Levels/${uploadDataDTO.level_name}/${uploadDataDTO.day}/${uploadDataDTO.key}.json`;
-      
-      // Add the file URLs to the data based on the lesson type
-      let processedData = [...uploadDataDTO.data];
-      if (pictureUrl || audioUrl) {
-        switch (uploadDataDTO.key) {
-          case 'PICTURES':
-            processedData = [{
-              pictureSrc: pictureUrl,
-              soundSrc: audioUrl,
-              wordEn: processedData[0]?.wordEn || '',
-              otherWords: processedData[0]?.otherWords || [],
-              definition: processedData[0]?.definition || '',
-              examples: processedData[0]?.examples || []
-            }];
-            break;
-          case 'LISTEN':
-            processedData = [{ soundSrc: audioUrl }];
-            break;
-          case 'READ':
-            processedData = processedData.map(item => ({
-              ...item,
-              soundSrc: audioUrl
-            }));
-            break;
-          case 'SPEAK':
-            processedData = processedData.map(item => ({
-              ...item,
-              soundSrc: audioUrl
-            }));
-            break;
-          default:
-            // For other types, we don't modify the data
-            break;
-        }
-      }
-
-      const jsonData = JSON.stringify(processedData);
-
       const command = new PutObjectCommand({
         Bucket: this.AWS_S3_BUCKET,
         Body: jsonData,
-        Key: dataKey,
+        Key: key,
         ContentType: 'application/json',
       });
 
-      await this.S3Client.send(command);
+      await this.S3Client.send(command).catch((error) => {
+        throw new InternalServerErrorException(error);
+      });
 
-      return {
-        message: 'Upload completed successfully',
-        dataKey,
-        pictureUrl,
-        audioUrl
-      };
+      return { message: 'File uploaded successfully to', key };
+    } catch (err) {
+      throw new InternalServerErrorException('Failed to upload file');
+    }
+  }
+
+
+  async uploadSingleFile(
+    file: Express.Multer.File,
+    uploadFileDTO: UploadFileDTO,
+  ) {
+    if (!file) {
+      throw new NotAcceptableException('File is required');
+    }
+
+    const fileTypePath = this.determineFileType(file.mimetype);
+    if (!fileTypePath) {
+      throw new NotAcceptableException(
+        'Unsupported file type. Only images and audio files are allowed.',
+      );
+    }
+
+    const key = this.generateFileKey(
+      fileTypePath,
+      uploadFileDTO,
+      file.originalname,
+    );
+
+    try {
+      await this.uploadToS3(file, key);
+      return await this.__getFileUrl(key, this.AWS_S3_BUCKET_RES);
     } catch (error) {
-      if (error instanceof NotAcceptableException || error instanceof BadRequestException) {
-        throw error;
-      }
-      throw new InternalServerErrorException(`Failed to upload: ${error.message}`);
+      throw new InternalServerErrorException(
+        `Failed to upload file: ${error.message}`,
+      );
     }
   }
 
@@ -258,3 +197,5 @@ export class UploadService {
     return { url: `https://${bucket}.s3.amazonaws.com/${key}` };
   }
 }
+
+

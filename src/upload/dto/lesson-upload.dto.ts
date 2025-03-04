@@ -30,6 +30,8 @@ export class UploadDTO {
   data: any[];
 }
 
+  // EVERY OBJ should look like that
+
 // Validation classes
 class READ {
   @IsString()
@@ -48,6 +50,16 @@ class WRITE {
 }
 
 class PICTURES {
+
+  @IsString()
+  @IsNotEmpty()
+  soundSrc: string;
+
+  @IsString()
+  @IsNotEmpty()
+  pictureSrc: string;
+
+
   @IsString()
   @IsNotEmpty()
   wordEn: string;
