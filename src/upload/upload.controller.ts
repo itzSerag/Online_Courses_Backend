@@ -7,17 +7,15 @@ import {
   NotFoundException,
   Post,
   Query,
-  UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
   ParseFilePipe,
-  MaxFileSizeValidator,
-  FileTypeValidator,
 } from '@nestjs/common';
 import { AdminGuard, JwtAuthGuard } from 'src/auth/guard';
 import { UploadDTO, UploadFileDTO, validateData } from './dto';
 import { UploadService } from './upload.service';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { log } from 'console';
 
 @UseGuards(JwtAuthGuard)
@@ -25,6 +23,8 @@ import { log } from 'console';
 export class UploadController {
   constructor(private uploadService: UploadService) {}
 
+
+  
   @Get('')
   async getContentByName(@Query() content: UploadFileDTO) {
     const result = await this.uploadService.getContentByName(content);
@@ -40,19 +40,23 @@ export class UploadController {
 
   @Post('')
   @UseGuards(AdminGuard)
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'pictureSrc', maxCount: 1 },
+      { name: 'soundSrc', maxCount: 1 },
+    ])
+  )
   async upload(
     @Body() dataUploadDTO: UploadDTO,
-    @UploadedFile(
+    @UploadedFiles(
       new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: 1024 * 1024 * 20 }), // 20MB
-          new FileTypeValidator({ fileType: '.(png|jpeg|jpg|gif|mp3|wav|mp4)' }),
-        ],
         fileIsRequired: false,
       }),
     )
-    file?: Express.Multer.File,
+    files: {
+      picture?: Express.Multer.File[];
+      audio?: Express.Multer.File[];
+    },
   ) {
     try {
       // Ensure data is parsed as an array
@@ -72,12 +76,7 @@ export class UploadController {
       // Validate the data structure
       await validateData(dataUploadDTO.key, dataUploadDTO.data);
 
-      // Attach the file to the DTO if present
-      if (file) {
-        dataUploadDTO.file = file;
-      }
-
-      return await this.uploadService.upload(dataUploadDTO);
+      return await this.uploadService.upload(dataUploadDTO, files);
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;

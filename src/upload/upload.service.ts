@@ -36,55 +36,89 @@ export class UploadService {
     });
   }
 
-  async upload(uploadDataDTO: UploadDTO) {
+  async upload(
+    uploadDataDTO: UploadDTO,
+    files: {
+      picture?: Express.Multer.File[];
+      audio?: Express.Multer.File[];
+    }
+  ) {
     try {
-      // Handle file upload first if present
-      let fileUrl: string | undefined;
-      if (uploadDataDTO.file) {
-        const fileTypePath = this.determineFileType(uploadDataDTO.file.mimetype);
-        if (!fileTypePath) {
-          throw new NotAcceptableException('Unsupported file type. Only images and audio files are allowed.');
+      // Handle file uploads first if present
+      let pictureUrl: string | undefined;
+      let audioUrl: string | undefined;
+
+      if (files) {
+        // Handle picture file
+        if (files.picture?.[0]) {
+          const fileKey = this.generateFileKey(
+            'Images',
+            {
+              level_name: uploadDataDTO.level_name,
+              day: uploadDataDTO.day,
+              lesson_name: uploadDataDTO.key
+            },
+            files.picture[0].originalname
+          );
+
+          await this.uploadToS3(files.picture[0], fileKey);
+          const pictureUrlResponse = await this.__getFileUrl(fileKey, this.AWS_S3_BUCKET_RES);
+          pictureUrl = pictureUrlResponse.url;
         }
 
-        const fileKey = this.generateFileKey(fileTypePath, {
-          level_name: uploadDataDTO.level_name,
-          day: uploadDataDTO.day,
-          lesson_name: uploadDataDTO.key
-        }, uploadDataDTO.file.originalname);
+        // Handle audio file
+        if (files.audio?.[0]) {
+          const fileKey = this.generateFileKey(
+            'Audio',
+            {
+              level_name: uploadDataDTO.level_name,
+              day: uploadDataDTO.day,
+              lesson_name: uploadDataDTO.key
+            },
+            files.audio[0].originalname
+          );
 
-        await this.uploadToS3(uploadDataDTO.file, fileKey);
-        const fileUrlResponse = await this.__getFileUrl(fileKey, this.AWS_S3_BUCKET_RES);
-        fileUrl = fileUrlResponse.url;
+          await this.uploadToS3(files.audio[0], fileKey);
+          const audioUrlResponse = await this.__getFileUrl(fileKey, this.AWS_S3_BUCKET_RES);
+          audioUrl = audioUrlResponse.url;
+        }
       }
 
-      // For PICTURES and LISTEN, we need a file
-      if ((uploadDataDTO.key === 'PICTURES' || uploadDataDTO.key === 'LISTEN') && !fileUrl) {
-        throw new BadRequestException(`File upload is required for ${uploadDataDTO.key} lessons`);
+      // For PICTURES, we need both picture and audio files
+      if (uploadDataDTO.key === 'PICTURES' && (!pictureUrl || !audioUrl)) {
+        throw new BadRequestException('Both picture and audio files are required for PICTURES lessons');
       }
 
       // Handle JSON data upload
       const dataKey = `Levels/${uploadDataDTO.level_name}/${uploadDataDTO.day}/${uploadDataDTO.key}.json`;
       
-      // Add the file URL to the data based on the lesson type
+      // Add the file URLs to the data based on the lesson type
       let processedData = [...uploadDataDTO.data];
-      if (fileUrl) {
+      if (pictureUrl || audioUrl) {
         switch (uploadDataDTO.key) {
           case 'PICTURES':
-            processedData = [{ pictureSrc: fileUrl }];
+            processedData = [{
+              pictureSrc: pictureUrl,
+              soundSrc: audioUrl,
+              wordEn: processedData[0]?.wordEn || '',
+              otherWords: processedData[0]?.otherWords || [],
+              definition: processedData[0]?.definition || '',
+              examples: processedData[0]?.examples || []
+            }];
             break;
           case 'LISTEN':
-            processedData = [{ soundSrc: fileUrl }];
+            processedData = [{ soundSrc: audioUrl }];
             break;
           case 'READ':
             processedData = processedData.map(item => ({
               ...item,
-              soundSrc: fileUrl
+              soundSrc: audioUrl
             }));
             break;
           case 'SPEAK':
             processedData = processedData.map(item => ({
               ...item,
-              soundSrc: fileUrl
+              soundSrc: audioUrl
             }));
             break;
           default:
@@ -107,7 +141,8 @@ export class UploadService {
       return {
         message: 'Upload completed successfully',
         dataKey,
-        fileUrl
+        pictureUrl,
+        audioUrl
       };
     } catch (error) {
       if (error instanceof NotAcceptableException || error instanceof BadRequestException) {

@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsEnum,
   IsNotEmpty,
   IsString,
@@ -27,9 +28,6 @@ export class UploadDTO {
 
   @IsString()
   data: any[];
-
-  // Optional file data that will be populated by the controller
-  file?: Express.Multer.File;
 }
 
 // Validation classes
@@ -50,7 +48,21 @@ class WRITE {
 }
 
 class PICTURES {
-  // No validation needed as picture will be uploaded
+  @IsString()
+  @IsNotEmpty()
+  wordEn: string;
+
+  @IsArray()
+  @IsNotEmpty()
+  otherWords: Array<string>
+
+  @IsString()
+  @IsNotEmpty()
+  definition: string
+
+  @IsArray()
+  @IsNotEmpty()
+  examples: Array<string>
 }
 
 class LISTEN {
@@ -126,8 +138,8 @@ export async function validateData(
     throw new Error(`No validation schema found for key: ${key}`);
   }
 
-  // Skip validation for PICTURES and LISTEN as they only need files
-  if (key === LESSONS.PICTURES || key === LESSONS.LISTEN) {
+  // Skip validation for LISTEN as it only needs files
+  if (key === LESSONS.LISTEN) {
     return true;
   }
 
