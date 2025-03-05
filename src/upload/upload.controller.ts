@@ -101,28 +101,12 @@ export class UploadController {
   @UseGuards(AdminGuard)
   @Delete('delete-obj')
   async deleteFromJsonDataArray(
-    @Body() dataUploadDTO: UploadDTO,
+    @Body() dataUploadDTO: UploadFileDTO,
     @Query('objectId') objectId: string) {
 
-    if (typeof dataUploadDTO.data === 'string') {
-      try {
-        dataUploadDTO.data = JSON.parse(dataUploadDTO.data);
-      } catch (error) {
-        throw new BadRequestException('Invalid JSON data format');
-      }
-    }
-
-    // Additional check to ensure data is an array
-    if (!Array.isArray(dataUploadDTO.data)) {
-      dataUploadDTO.data = [dataUploadDTO.data];
-    }
-
-
-    await validateData(dataUploadDTO.lesson_name, dataUploadDTO.data);
     return await this.uploadService.deleteFromJsonDataArray(dataUploadDTO, objectId);
 
   }
-
 
 
   // delete the whole file

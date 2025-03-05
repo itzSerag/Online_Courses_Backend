@@ -148,7 +148,7 @@ export class UploadService {
 
 
   async deleteFromJsonDataArray(
-    uploadDTO: UploadDTO,
+    uploadDTO: UploadFileDTO,
     objectId: string,
   ): Promise<void> {
     const key = this.createJsonKey(uploadDTO);
@@ -206,7 +206,7 @@ export class UploadService {
     return await response.json();
   }
 
-  private createJsonKey(uploadDTO: UploadDTO): string {
+  private createJsonKey(uploadDTO: UploadDTO   | UploadFileDTO ): string {
     return `Levels/${uploadDTO.level_name}/${uploadDTO.day}/${uploadDTO.lesson_name}.json`;
   }
 
