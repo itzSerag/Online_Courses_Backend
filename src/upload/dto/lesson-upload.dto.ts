@@ -45,6 +45,11 @@ class READ {
   @IsNotEmpty()
   id?: string
 
+  
+  @IsString()
+  @IsNotEmpty()
+  soundSrc: string;
+
   @IsString()
   @IsNotEmpty()
   transcript: string;
