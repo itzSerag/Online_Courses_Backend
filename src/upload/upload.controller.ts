@@ -17,6 +17,7 @@ import { UploadService } from './upload.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { log } from 'console';
 import { AllowedAudioMimeTypes, AllowedImageMimeTypes } from './enum';
+import { DeleteObjDTO } from './dto/delete-obj.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('files')
@@ -101,10 +102,9 @@ export class UploadController {
   @UseGuards(AdminGuard)
   @Delete('delete-obj')
   async deleteFromJsonDataArray(
-    @Body() dataUploadDTO: UploadFileDTO,
-    @Query('objectId') objectId: string) {
+    @Query() deleteObjDTO: DeleteObjDTO) {
 
-    return await this.uploadService.deleteFromJsonDataArray(dataUploadDTO, objectId);
+    return await this.uploadService.deleteFromJsonDataArray(deleteObjDTO);
 
   }
 

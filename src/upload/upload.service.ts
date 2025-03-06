@@ -15,6 +15,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { UploadDTO, UploadFileDTO } from './dto';
 import { v4 as uuidv4 } from 'uuid';
+import { DeleteObjDTO } from './dto/delete-obj.dto';
 
 enum FileType {
   IMAGE = 'Images',
@@ -148,9 +149,9 @@ export class UploadService {
 
 
   async deleteFromJsonDataArray(
-    uploadDTO: UploadFileDTO,
-    objectId: string,
+    deleteObjDTO : DeleteObjDTO
   ): Promise<void> {
+    const { objectId, ...uploadDTO } = deleteObjDTO;
     const key = this.createJsonKey(uploadDTO);
 
     try {
@@ -160,7 +161,7 @@ export class UploadService {
       const initialLength = jsonData.data.length;
       // Use strict equality comparison
       jsonData.data = jsonData.data.filter((item) => {
-        return item.id !== objectId.toString();
+        return item.id !== deleteObjDTO.objectId.toString();
       });
 
       if (jsonData.data.length === initialLength) {
