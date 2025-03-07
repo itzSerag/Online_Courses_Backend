@@ -7,11 +7,26 @@ import {
   IsUUID,
   Matches,
   validate,
+  ValidateNested,
   ValidationError,
 } from 'class-validator';
 import { LESSONS } from '../../common/enums/lessons';
 import { Level_Name } from '../../common/enums';
 import { BadRequestException } from '@nestjs/common';
+import { Type } from 'class-transformer';
+
+// SUB DTOs
+
+class Example {
+  @IsString()
+  @IsNotEmpty()
+  word: string;
+
+  @IsString()
+  @IsNotEmpty()
+  sentence: string;
+}
+
 
 // Main DTO
 export class UploadDTO {
@@ -45,7 +60,7 @@ class READ {
   @IsNotEmpty()
   id?: string
 
-  
+
   @IsString()
   @IsNotEmpty()
   soundSrc: string;
@@ -107,7 +122,7 @@ class PICTURES {
 }
 
 class LISTEN {
-  // No validation needed as audio will be uploaded
+
 }
 
 class Q_A {
@@ -127,13 +142,34 @@ class SPEAK {
 }
 
 class GRAMMAR {
-  @IsString()
+
+  @IsOptional()
+  @IsUUID()
   @IsNotEmpty()
-  title: string;
+  id?: string
 
   @IsString()
   @IsNotEmpty()
-  content: string;
+  nameEn: string
+
+  @IsString()
+  @IsNotEmpty()
+  nameAr: string;
+
+  @IsString()
+  @IsNotEmpty()
+  definition: string;
+
+  @IsArray()
+  @IsNotEmpty()
+  useCases: Array<string>;
+
+
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => Example)
+  examples: Example[];
 }
 
 class DAILY_TEST {
