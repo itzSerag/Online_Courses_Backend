@@ -13,10 +13,9 @@ import {
 import { LESSONS } from '../../common/enums/lessons';
 import { Level_Name } from '../../common/enums';
 import { BadRequestException } from '@nestjs/common';
-import { Type } from 'class-transformer';
+import { plainToInstance, Type } from 'class-transformer';
 
 // SUB DTOs
-
 class Example {
   @IsString()
   @IsNotEmpty()
@@ -27,11 +26,8 @@ class Example {
   sentence: string;
 }
 
-
 // Main DTO
 export class UploadDTO {
-
-
   @IsNotEmpty()
   @IsEnum(LESSONS)
   lesson_name: LESSONS;
@@ -49,17 +45,12 @@ export class UploadDTO {
   data: any[];
 }
 
-// EVERY OBJ should look like that
-
 // Validation classes
 class READ {
-
-
   @IsOptional()
   @IsUUID()
   @IsNotEmpty()
   id?: string
-
 
   @IsString()
   @IsNotEmpty()
@@ -71,13 +62,10 @@ class READ {
 }
 
 class WRITE {
-
-
   @IsOptional()
   @IsUUID()
   @IsNotEmpty()
   id?: string
-
 
   @IsString()
   @IsNotEmpty()
@@ -89,7 +77,6 @@ class WRITE {
 }
 
 class PICTURES {
-
   @IsOptional()
   @IsUUID()
   @IsNotEmpty()
@@ -102,7 +89,6 @@ class PICTURES {
   @IsString()
   @IsNotEmpty()
   pictureSrc: string;
-
 
   @IsString()
   @IsNotEmpty()
@@ -122,7 +108,7 @@ class PICTURES {
 }
 
 class LISTEN {
-
+  // Empty class as mentioned in the validation logic
 }
 
 class Q_A {
@@ -142,7 +128,6 @@ class SPEAK {
 }
 
 class GRAMMAR {
-
   @IsOptional()
   @IsUUID()
   @IsNotEmpty()
@@ -164,11 +149,10 @@ class GRAMMAR {
   @IsNotEmpty()
   useCases: Array<string>;
 
-
-
   @IsArray()
+  @IsNotEmpty() // Ensures the array is not empty
   @ValidateNested({ each: true })
-  @Type(() => Example)
+  @Type(() => Example) // This is the key missing part
   examples: Example[];
 }
 
@@ -224,7 +208,21 @@ export async function validateData(
 
   // Validate each item in the data array
   for (const item of data) {
-    const instance = Object.assign(new ValidatorClass(), item);
+    // Create a properly transformed instance
+    let instance;
+    
+    if (key === LESSONS.GRAMMAR) {
+      // For GRAMMAR, we need to ensure proper transformation
+      const transformedItem = {
+        ...item,
+        examples: Array.isArray(item.examples) ? 
+          item.examples.map(ex => typeof ex === 'object' ? ex : {}) : []
+      };
+      instance = plainToInstance(ValidatorClass, transformedItem);
+    } else {
+      instance = plainToInstance(ValidatorClass, item);
+    }
+    
     const errors = await validate(instance);
     if (errors.length > 0) {
       validationErrors.push(...errors);
