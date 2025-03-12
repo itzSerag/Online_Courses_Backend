@@ -29,12 +29,28 @@ export class PaymobController {
     private userService: UsersService,
   ) { }
 
-  @Get('/callback')
-  async callback(
-    @Query() data: any,
-  ) {
+  @Post('/callback')
+  async callbackPost(@Body() data: PaymentPostBodyCallback) {
+    const success = data.obj?.success;
+    const orderId = data.obj?.id;
+    const userEmail = data.obj?.order?.shipping_data.email;
 
-    this.logger.log(`Callback received: ${JSON.stringify(data)}`);
+
+
+    try {
+      const userData = await this.paymobService.handlePaymobCallback(
+        orderId,
+        success,
+        data.obj.amount_cents,
+        userEmail,
+      );
+
+      return { userData };
+    } catch (err) {
+      throw new InternalServerErrorException(
+        `Failed to handle callback : ${err.message}`,
+      );
+    }
   }
 
   @UseGuards(JwtAuthGuard)
