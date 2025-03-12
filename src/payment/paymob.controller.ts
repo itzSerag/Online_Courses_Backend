@@ -31,35 +31,10 @@ export class PaymobController {
 
   @Get('/callback')
   async callback(
-    @Query() data: PaymentPostBodyCallback,
+    @Query() data: any,
   ) {
-    const success = data.obj.success;
-    const orderId = data.obj.id;
-    const userEmail = data.obj.order.shipping_data.email;
 
-    this.logger.log(`Payment callback received for order ${orderId}, user: ${userEmail}`);
-
-    try {
-      // Verify HMAC signature
-      if (!this.paymobService.verifyHmac(data)) {
-        throw new BadRequestException('Invalid HMAC signature');
-      }
-      const userData = await this.paymobService.handlePaymobCallback(
-        orderId,
-        success,
-        data.obj.amount_cents,
-        userEmail,
-        data, // Pass the full data object for HMAC verification
-      );
-
-
-      return { userData };
-    } catch (err) {
-      this.logger.error(`Callback handling failed: ${err.message}`, err.stack);
-      throw new InternalServerErrorException(
-        `Failed to handle callback: ${err.message}`,
-      );
-    }
+    this.logger.log(`Callback received: ${JSON.stringify(data)}`);
   }
 
   @UseGuards(JwtAuthGuard)
