@@ -1,28 +1,27 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
-import { SignUpDto } from 'src/auth/dto';
-import { log } from 'console';
-import { UserWithId, UserWithoutPassword } from './types';
+import { SignUpDto, UpdateUserDto } from 'src/auth/dto';
 import { PaymentStatus } from 'src/payment/types';
-import { Level_Name } from '../common/enums';
-
-
+import { Level_Name, User } from '@prisma/client'; // Import directly from Prisma
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(UsersService.name);
 
-  async createUser(data: SignUpDto): Promise<UserWithId> {
+  constructor(private prisma: PrismaService) { }
+
+  async createUser(data: SignUpDto): Promise<User> {
     try {
-      const hashedPassword = await bcrypt.hash(data.password, 10);
+      const hashedPassword = await this.hashPassword(data.password);
 
-      // Create the user with the hashed password
       const user = await this.prisma.user.create({
         data: {
           ...data,
@@ -30,61 +29,68 @@ export class UsersService {
         },
       });
 
-      return user;
-    } catch (err) {
-      log('Error creating user:', err);
-      throw new Error('User creation failed');
+      return this.sanitizedUser(user);
+
+    } catch (error) {
+      this.logger.error(`Error creating user: ${error.message}`, error.stack);
+      if (error.code === 'P2002') {
+        throw new BadRequestException('User with this email already exists');
+      }
+      throw new InternalServerErrorException('User creation failed');
     }
   }
 
-  async findByEmail(email: string): Promise<UserWithId | null> {
-    const user = await this.prisma.user.findUnique({ where: { email } });
-    log('User found:', user);
-    return user;
+  async findByEmail(email: string): Promise<User | null> {
+    try {
+      const user = await this.prisma.user.findUnique({ where: { email } });
+      return user;
+    } catch (error) {
+      this.logger.error(`Error finding user by email: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Failed to find user by email');
+    }
   }
 
-  async findById(id: number): Promise<UserWithId | null> {
+  async findById(id: number): Promise<User> {
     try {
       const user = await this.prisma.user.findUnique({ where: { id } });
 
       if (!user) {
-        throw new NotFoundException('User not found');
+        throw new NotFoundException(`User with ID ${id} not found`);
       }
 
-      return user;
+      return this.sanitizedUser(user);
     } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      this.logger.error(`Error finding user by ID: ${error.message}`, error.stack);
       throw new InternalServerErrorException("Couldn't fetch user");
     }
   }
 
-  async findAllUsers(): Promise<UserWithoutPassword[]> {
+  async findAllUsers(): Promise<User[]> {
     try {
-      const users = await this.prisma.user.findMany();
+      const users = await this.prisma.user.findMany()
 
       if (!users || users.length === 0) {
         throw new NotFoundException('No users found');
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const usersWithoutPassword = users.map(({ password, ...rest }) => rest);
-      return usersWithoutPassword;
-    } catch (err) {
-      log('An error occurred while fetching users:', err);
-      throw new Error('Could not fetch users');
+      return users.map((user) => this.sanitizedUser(user));
+    } catch (error) {
+      this.logger.error(`Error fetching all users: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Could not fetch users');
     }
   }
 
   async updateUser(
     id: number,
-    data: Partial<UserWithId>,
-  ): Promise<UserWithoutPassword> {
+    data: UpdateUserDto,
+  ): Promise<User> {
     try {
-
-
-      // if - 123456  
       // If updating password, hash it before saving
       if (data.password) {
-        data.password = await bcrypt.hash(data.password, 10);
+        data.password = await this.hashPassword(data.password);
       }
 
       const user = await this.prisma.user.update({
@@ -92,135 +98,152 @@ export class UsersService {
         data,
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { password, ...userWithoutPassword } = user;
-      return userWithoutPassword;
-    } catch (err) {
-      log('Error updating user:', err);
-      throw new Error('User update failed');
+
+      return this.sanitizedUser(user);
+    } catch (error) {
+      this.logger.error(`Error updating user: ${error.message}`, error.stack);
+      if (error.code === 'P2025') {
+        throw new NotFoundException(`User with ID ${id} not found`);
+      }
+      throw new InternalServerErrorException('User update failed');
     }
   }
 
-  async deleteUser(id: number): Promise<UserWithoutPassword> {
-    const user = await this.findById(id);
+  async deleteUser(id: number): Promise<User> {
+    try {
+      // First check if user exists
+      await this.findById(id);
 
-    if (!user) {
-      throw new NotFoundException('User not found');
+      const user = await this.prisma.user.delete({
+        where: { id },
+      });
+
+      this.logger.log(`Deleted user with ID ${id}`);
+      return this.sanitizedUser(user);
+
+
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      this.logger.error(`Error deleting user: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Failed to delete user');
     }
-
-    const deletedUser = await this.prisma.user.delete({
-      where: { id },
-    });
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password, ...userWithoutPassword } = deletedUser;
-    log('Deleted user' + userWithoutPassword);
-    return userWithoutPassword;
   }
 
-  async verifyUser(email: string): Promise<UserWithId> {
-    return this.prisma.user.update({
-      where: { email },
-      data: { isVerified: true },
-    });
+  async verifyUser(email: string): Promise<User> {
+    try {
+      return this.prisma.user.update({
+        where: { email },
+        data: { isVerified: true },
+      });
+    } catch (error) {
+      this.logger.error(`Error verifying user: ${error.message}`, error.stack);
+      if (error.code === 'P2025') {
+        throw new NotFoundException(`User with email ${email} not found`);
+      }
+      throw new InternalServerErrorException('User verification failed');
+    }
   }
 
   async getUserOrders(userId: number) {
     try {
-      const userOrders = await this.prisma.order.findMany({
+      return this.prisma.order.findMany({
         where: { userId },
       });
-
-      return userOrders;
-    } catch (err) {
-      log('Error fetching user orders:', err);
-      throw new Error('Could not fetch user orders');
+    } catch (error) {
+      this.logger.error(`Error fetching user orders: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Could not fetch user orders');
     }
   }
 
   async getUserCompletedOrders(userId: number) {
     try {
-      const userOrders = await this.prisma.order.findMany({
-        where: { userId, paymentStatus: PaymentStatus.COMPLETED },
+      return this.prisma.order.findMany({
+        where: {
+          userId,
+          paymentStatus: PaymentStatus.COMPLETED
+        },
       });
-
-      return userOrders;
-    } catch (err) {
-      log('Error fetching user orders:', err);
-      throw new Error('Could not fetch user orders');
+    } catch (error) {
+      this.logger.error(`Error fetching completed orders: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Could not fetch completed orders');
     }
   }
 
   async getCompletedDaysInLevel(userId: number, levelName: Level_Name) {
-    await this._checkIfUserHasThatLevel(userId, levelName);
+    try {
+      // Check if user has the level
+      await this.checkUserLevelAccess(userId, levelName);
 
-    const completedDays = await this.prisma.userProgress.findMany({
-      where: {
-        userId: userId,
-        day: {
-          levelName: levelName,
+      const completedDays = await this.prisma.userProgress.findMany({
+        where: {
+          userId: userId,
+          day: {
+            levelName: levelName,
+          },
+          completed: true,
         },
-        completed: true,
-      },
-      select: {
-        day: {
-          select: {
-            dayNumber: true,
+        select: {
+          day: {
+            select: {
+              dayNumber: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    const dayNumbers = completedDays.map(
-      (completedDay) => completedDay.day.dayNumber,
-    );
-
-    return dayNumbers;
+      return completedDays.map(
+        (completedDay) => completedDay.day.dayNumber,
+      );
+    } catch (error) {
+      if (error instanceof ForbiddenException) {
+        throw error;
+      }
+      this.logger.error(`Error getting completed days: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Failed to get completed days');
+    }
   }
 
   async markDayAsCompleted(
     userId: number,
     levelName: Level_Name,
-    dayId: number,
+    dayNumber: number,
   ) {
-    await this._checkIfUserHasThatLevel(userId, levelName);
+    try {
+      // Check if user has the level
+      await this.checkUserLevelAccess(userId, levelName);
 
-    const day = await this.prisma.day.upsert({
-      where: {
-        levelName_dayNumber: {
-          levelName: levelName,
-          dayNumber: dayId,
+      const day = await this.getOrCreateDay(levelName, dayNumber);
+
+      // Upsert the user progress
+      await this.prisma.userProgress.upsert({
+        where: {
+          userId_dayId: {
+            userId: userId,
+            dayId: day.id,
+          },
         },
-      },
-      update: {},
-      create: {
-        levelName: levelName,
-        dayNumber: dayId,
-      },
-      select: { id: true },
-    });
-
-    // Upsert the user progress
-    await this.prisma.userProgress.upsert({
-      where: {
-        userId_dayId: {
+        update: {
+          completed: true,
+          completedAt: new Date(),
+        },
+        create: {
           userId: userId,
           dayId: day.id,
+          completed: true,
+          completedAt: new Date(),
         },
-      },
-      update: {
-        completed: true,
-        completedAt: new Date(),
-      },
-      create: {
-        userId: userId,
-        dayId: day.id,
-        completed: true,
-        completedAt: new Date(),
-      },
-    });
+      });
 
-    return 'Day Completed Successfully';
+      return { message: 'Day completed successfully' };
+    } catch (error) {
+      if (error instanceof ForbiddenException) {
+        throw error;
+      }
+      this.logger.error(`Error marking day as completed: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Failed to mark day as completed');
+    }
   }
 
   async markTaskAsCompleted(
@@ -229,27 +252,14 @@ export class UsersService {
     dayNumber: number,
     taskName: string,
   ) {
-    await this._checkIfUserHasThatLevel(userId, levelName);
-
     try {
-      // Ensure the day exists or create it if it doesn't
-      const day = await this.prisma.day.upsert({
-        where: {
-          levelName_dayNumber: {
-            levelName: levelName,
-            dayNumber: dayNumber,
-          },
-        },
-        update: {},
-        create: {
-          levelName: levelName,
-          dayNumber: dayNumber,
-        },
-        select: { id: true },
-      });
+      // Check if user has the level
+      await this.checkUserLevelAccess(userId, levelName);
 
-      log(taskName);
-      // Ensure the task exists or create it if it doesn't
+      // Get or create the day
+      const day = await this.getOrCreateDay(levelName, dayNumber);
+
+      // Get or create the task
       const task = await this.prisma.task.upsert({
         where: {
           dayId_name: {
@@ -286,67 +296,105 @@ export class UsersService {
         },
       });
 
-      return 'Task Completed Successfully';
-    } catch (err) {
-      throw new Error(`Error completing task: ${err.message}`);
+      return { message: 'Task completed successfully' };
+    } catch (error) {
+      if (error instanceof ForbiddenException) {
+        throw error;
+      }
+      this.logger.error(`Error marking task as completed: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Failed to mark task as completed');
     }
   }
 
   async getCompletedTasksInDay(
     userId: number,
     levelName: Level_Name,
-    day: number,
+    dayNumber: number,
   ) {
-    const userOrders = await this.getUserCompletedOrders(userId);
-    if (!userOrders || userOrders.length === 0) {
-      throw new ForbiddenException('User has not bought the level');
-    }
+    try {
+      // Check if user has the level
+      await this.checkUserLevelAccess(userId, levelName);
 
-    // find if the day exists in user progress if not create one
-    await this.prisma.userProgress.upsert({
-      where: {
-        userId_dayId: {
+      // First find the day
+      const day = await this.prisma.day.findUnique({
+        where: {
+          levelName_dayNumber: {
+            levelName: levelName,
+            dayNumber: dayNumber,
+          },
+        },
+      });
+
+      if (!day) {
+        return []; // No tasks completed yet because the day doesn't exist
+      }
+
+      // Get the tasks completed by the user
+      const completedTasks = await this.prisma.userTask.findMany({
+        where: {
           userId,
-          dayId: day,
+          task: {
+            dayId: day.id,
+          },
+          completed: true,
+        },
+        select: {
+          task: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      });
+
+      return completedTasks.map((task) => task.task.name);
+    } catch (error) {
+      if (error instanceof ForbiddenException) {
+        throw error;
+      }
+      this.logger.error(`Error getting completed tasks: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Failed to get completed tasks');
+    }
+  }
+
+  // Helper Methods
+  private async hashPassword(password: string): Promise<string> {
+    return bcrypt.hash(password, 10);
+  }
+
+  private async getOrCreateDay(levelName: Level_Name, dayNumber: number) {
+    return this.prisma.day.upsert({
+      where: {
+        levelName_dayNumber: {
+          levelName: levelName,
+          dayNumber: dayNumber,
         },
       },
       update: {},
       create: {
-        userId,
-        dayId: day,
+        levelName: levelName,
+        dayNumber: dayNumber,
       },
       select: { id: true },
     });
-
-    // get the tasks completed by the user
-    const completedTasks = await this.prisma.userTask.findMany({
-      where: {
-        userId,
-        task: {
-          dayId: day,
-        },
-        completed: true,
-      },
-      select: {
-        task: {
-          select: {
-            name: true,
-          },
-        },
-      },
-    });
-
-    return completedTasks.map((task) => task.task.name);
   }
 
-  async _checkIfUserHasThatLevel(userId: number, levelName: Level_Name) {
+  private async checkUserLevelAccess(userId: number, levelName: Level_Name) {
     const userOrders = await this.getUserCompletedOrders(userId);
-    if (
-      !userOrders ||
-      userOrders.length === 0 ||
-      userOrders.map((order) => order.levelName).indexOf(levelName) === -1
-    ) {
-      throw new ForbiddenException('User has not bought the level');
+
+    if (!userOrders || userOrders.length === 0) {
+      throw new ForbiddenException('User has not purchased any levels');
     }
+
+    const hasLevel = userOrders.some(order => order.levelName === levelName);
+
+    if (!hasLevel) {
+      throw new ForbiddenException(`User has not purchased level ${levelName}`);
+    }
+  }
+
+  private sanitizedUser(user: User) {
+    delete user.password
+    return user;
   }
 }

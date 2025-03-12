@@ -3,6 +3,7 @@ export interface PaymentPostBodyCallback {
   obj: Obj;
   issuer_bank: null;
   transaction_processed_callback_responses: string;
+  hmac?: string
 }
 
 export interface Obj {
@@ -157,7 +158,7 @@ export interface Order {
   data: ExtraClass;
 }
 
-export interface ExtraClass {}
+export interface ExtraClass { }
 
 export interface Merchant {
   id: number;

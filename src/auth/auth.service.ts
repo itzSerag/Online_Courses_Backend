@@ -7,11 +7,10 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from 'src/users/users.service';
-import { PayLoad, SignUpDto } from './dto';
-import { UserWithoutPassword } from 'src/users/types';
+import { LoginDto, PayLoad, SignUpDto } from './dto';
 import { EmailService } from './auth.email.service';
 import { OtpService } from './auth.otp.service';
-import { log } from 'console';
+import { User } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -20,7 +19,7 @@ export class AuthService {
     private readonly userService: UsersService,
     private readonly emailService: EmailService,
     private readonly otpService: OtpService,
-  ) {}
+  ) { }
 
   async isVerified(email: string) {
     const user = await this.userService.findByEmail(email);
@@ -30,10 +29,11 @@ export class AuthService {
     return false;
   }
 
-  async __validateUser(
+  private async validateUser(
     email: string,
     userPassword: string,
-  ): Promise<UserWithoutPassword | null> {
+  ): Promise<User> {
+
     try {
       const user = await this.userService.findByEmail(email);
 
@@ -62,8 +62,8 @@ export class AuthService {
         });
       }
 
-      const { password, ...userWithoutPassword } = user;
-      return userWithoutPassword;
+      return this.sanitizedUser(user);
+
     } catch (error) {
       if (error instanceof ForbiddenException) {
         throw error;
@@ -80,13 +80,13 @@ export class AuthService {
   }
 
   async signup(user: SignUpDto) {
+
     const existingUser = await this.userService.findByEmail(user.email);
     if (existingUser) {
-      /// conflict exception for duplicate user
       throw new ConflictException('User with this email already exists');
     }
 
-    const newUser = await this.userService.createUser(user);
+    let newUser = await this.userService.createUser(user);
 
     const payload: PayLoad = {
       email: newUser.email,
@@ -96,33 +96,21 @@ export class AuthService {
 
     const jwt = await this.generateToken(payload);
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password, ...userWithoutPassword } = newUser;
+    // TODO : EMAIL SERVICE
+    //await this.generateOTP(user.email);
+    // await this.emailService.sendEmail(user.email, otp);
 
-    /// generate and create an otp record
-    await this.generateOTP(user.email);
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    // const emailResponse = await this.emailService.sendEmail(user.email, otp);
-
+    newUser = await this.sanitizedUser(newUser);
     return {
       access_token: jwt,
-      user: userWithoutPassword,
+      newUser
     };
   }
 
-  async login(user: any): Promise<any> {
-    const payload: PayLoad = {
-      email: user.email,
-      sub: user.id,
-      roles: user.role,
-    };
-
-    return {
-      access_token: await this.generateToken(payload),
-      user,
-    };
-  }
+  async login(userLoginDto: LoginDto): Promise<any> {
+    return await this.validateUser(userLoginDto.email, userLoginDto.password);
+  };
 
   async resetPassword(email: string, password: string) {
     const user = await this.userService.findByEmail(email);
@@ -141,19 +129,14 @@ export class AuthService {
     }
   }
 
-  async resendOtp(email: string) {
-    const user = await this.userService.findByEmail(email);
-
-    if (!user) {
-      throw new ConflictException('User with this email does not exist');
-    }
+  async resendOtp(userEmail: string) {
 
     // delete the previous otp record
-    await this.otpService.deleteOtp(email);
+    await this.otpService.deleteOtp(userEmail);
 
-    const otp = await this.generateOTP(email);
-
+    // TODO : EMAIL SERVICE
     // const emailResponse = await this.emailService.sendEmail(email, otp);
+    //await this.generateOTP(userEmail);
     // log(emailResponse);
 
     return { message: 'OTP sent successfully' };
@@ -177,7 +160,8 @@ export class AuthService {
         'Email already in use with another sign-in/up method',
       );
     }
-    return user;
+
+    return this.sanitizedUser(user);
   }
 
   async generateToken(user: PayLoad) {
@@ -205,5 +189,12 @@ export class AuthService {
   async logout() {
     // destroy the token
     return { message: 'Logged out successfully' };
+  }
+
+
+  private async sanitizedUser(user: User) {
+
+    delete user.password;
+    return user;
   }
 }

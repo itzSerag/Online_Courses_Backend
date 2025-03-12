@@ -15,22 +15,17 @@ import { LoginDto, PayLoad, SignUpDto } from './dto';
 import { JwtAuthGuard } from './guard';
 import { IsVerifiedGuard } from './guard/isVerified.guard';
 import { Request, Response } from 'express';
+import { CurUser } from 'src/users/decorators/get-user.decorator';
+import { User } from '@prisma/client';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService) { }
 
   @Post('login')
-  async login(@Body() body: LoginDto) {
-    const user = await this.authService.__validateUser(
-      body.email,
-      body.password,
-    );
+  async login(@Body() userLoginDto: LoginDto) {
 
-    if (!user) {
-      throw new UnauthorizedException('Invalid Email or Password');
-    }
-    return this.authService.login(user);
+    return this.authService.login(userLoginDto);
   }
 
   @Post('signup')
@@ -41,14 +36,14 @@ export class AuthController {
   @Post('reset-password')
   @UseGuards(IsVerifiedGuard)
   @UseGuards(JwtAuthGuard)
-  async resetPassword(@Body('password') password: string, @Req() req) {
-    return await this.authService.resetPassword(req.user.email, password);
+  async resetPassword(@Body('password') password: string, @CurUser() user: User) {
+    return await this.authService.resetPassword(user.email, password);
   }
 
   @Post('resend-otp')
   @UseGuards(JwtAuthGuard)
-  async resendOtp(@Req() req) {
-    return this.authService.resendOtp(req.user.email);
+  async resendOtp(@CurUser() user: User) {
+    return this.authService.resendOtp(user.email);
   }
 
   @Get('facebook')
@@ -78,7 +73,7 @@ export class AuthController {
 
   @Get('google')
   @UseGuards(AuthGuard('google'))
-  async googleAuth() {}
+  async googleAuth() { }
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))

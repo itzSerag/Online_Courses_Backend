@@ -1,3 +1,4 @@
+import { Role } from '@prisma/client';
 import { IsString, IsNotEmpty, IsEmail } from 'class-validator';
 
 export class SignUpDto {
@@ -38,7 +39,10 @@ export class UpdateUserDto {
   email?: string;
   password?: string;
   username?: string;
-  // Other updatable fields
+  firstName?: string;
+  lastName?: string;
+  role?: Role;
+  isVerified?: boolean;
 }
 
 export class PayLoad {

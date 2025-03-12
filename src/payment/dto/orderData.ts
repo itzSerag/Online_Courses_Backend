@@ -5,7 +5,7 @@ export class PaymentRequestDTO {
   @IsString()
   @IsNotEmpty()
   @IsEnum(Level_Name)
-  item_name: Level_Name;
+  level_name: Level_Name;
 
   @IsString()
   @IsNotEmpty()

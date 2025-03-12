@@ -13,7 +13,7 @@ import {
 import { LESSONS } from '../../common/enums/lessons';
 import { Level_Name } from '../../common/enums';
 import { BadRequestException } from '@nestjs/common';
-import { plainToInstance, Type } from 'class-transformer';
+import { plainToInstance, Type, ClassConstructor } from 'class-transformer';
 
 // SUB DTOs
 class Example {
@@ -24,6 +24,16 @@ class Example {
   @IsString()
   @IsNotEmpty()
   sentence: string;
+}
+
+class Definition {
+  @IsString()
+  @IsNotEmpty()
+  word: string;
+
+  @IsString()
+  @IsNotEmpty()
+  definition: string;
 }
 
 // Main DTO
@@ -108,10 +118,32 @@ class PICTURES {
 }
 
 class LISTEN {
-  // Empty class as mentioned in the validation logic
+  @IsOptional()
+  @IsUUID()
+  @IsNotEmpty()
+  id?: string
+
+  @IsString()
+  @IsNotEmpty()
+  soundSrc: string;
+
+  @IsString()
+  @IsNotEmpty()
+  transcript: string;
+
+  @IsArray()
+  @IsNotEmpty()
+  @ValidateNested({ each: true })
+  @Type(() => Definition)
+  definitions: Definition[];
 }
 
 class Q_A {
+  @IsOptional()
+  @IsUUID()
+  @IsNotEmpty()
+  id?: string
+
   @IsString()
   @IsNotEmpty()
   question: string;
@@ -122,6 +154,11 @@ class Q_A {
 }
 
 class SPEAK {
+  @IsOptional()
+  @IsUUID()
+  @IsNotEmpty()
+  id?: string
+
   @IsString()
   @IsNotEmpty()
   text: string;
@@ -152,11 +189,16 @@ class GRAMMAR {
   @IsArray()
   @IsNotEmpty() // Ensures the array is not empty
   @ValidateNested({ each: true })
-  @Type(() => Example) // This is the key missing part
+  @Type(() => Example)
   examples: Example[];
 }
 
 class DAILY_TEST {
+  @IsOptional()
+  @IsUUID()
+  @IsNotEmpty()
+  id?: string
+
   @IsString()
   @IsNotEmpty()
   question: string;
@@ -167,6 +209,11 @@ class DAILY_TEST {
 }
 
 class IDIOMS {
+  @IsOptional()
+  @IsUUID()
+  @IsNotEmpty()
+  id?: string
+
   @IsString()
   @IsNotEmpty()
   idiom: string;
@@ -176,17 +223,17 @@ class IDIOMS {
   meaning: string;
 }
 
-// Mapping from key to validation class
-const validationMap = {
-  READ,
-  WRITE,
-  PICTURES,
-  LISTEN,
-  Q_A,
-  SPEAK,
-  GRAMMAR,
-  DAILY_TEST,
-  IDIOMS,
+// Type-safe mapping from key to validation class
+const validationMap: Record<LESSONS, ClassConstructor<any>> = {
+  [LESSONS.READ]: READ,
+  [LESSONS.WRITE]: WRITE,
+  [LESSONS.PICTURES]: PICTURES,
+  [LESSONS.LISTEN]: LISTEN,
+  [LESSONS.Q_A]: Q_A,
+  [LESSONS.SPEAK]: SPEAK,
+  [LESSONS.GRAMMAR]: GRAMMAR,
+  [LESSONS.DAILY_TEST]: DAILY_TEST,
+  [LESSONS.IDIOMS]: IDIOMS,
 };
 
 export async function validateData(
@@ -199,30 +246,24 @@ export async function validateData(
     throw new Error(`No validation schema found for key: ${key}`);
   }
 
-  // Skip validation for LISTEN as it only needs files
-  if (key === LESSONS.LISTEN) {
-    return true;
-  }
-
   const validationErrors: ValidationError[] = [];
 
   // Validate each item in the data array
   for (const item of data) {
-    // Create a properly transformed instance
     let instance;
-    
+
     if (key === LESSONS.GRAMMAR) {
-      // For GRAMMAR, we need to ensure proper transformation
+      // For GRAMMAR, we need to ensure proper transformation , Special case
       const transformedItem = {
         ...item,
-        examples: Array.isArray(item.examples) ? 
+        examples: Array.isArray(item.examples) ?
           item.examples.map(ex => typeof ex === 'object' ? ex : {}) : []
       };
       instance = plainToInstance(ValidatorClass, transformedItem);
     } else {
       instance = plainToInstance(ValidatorClass, item);
     }
-    
+
     const errors = await validate(instance);
     if (errors.length > 0) {
       validationErrors.push(...errors);
