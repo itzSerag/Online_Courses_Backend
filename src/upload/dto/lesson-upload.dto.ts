@@ -216,11 +216,25 @@ class IDIOMS {
 
   @IsString()
   @IsNotEmpty()
-  idiom: string;
+  exampleAr: string;
 
   @IsString()
   @IsNotEmpty()
-  meaning: string;
+  exampleEn: string;
+
+  @IsString()
+  @IsNotEmpty()
+  sentence: string;
+
+  @IsString()
+  @IsNotEmpty()
+  soundSrc: string;
+
+  @IsString()
+  @IsNotEmpty()
+  pictureSrc: string;
+
+ 
 }
 
 // Type-safe mapping from key to validation class

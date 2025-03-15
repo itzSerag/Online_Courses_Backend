@@ -7,12 +7,10 @@ import {
   BadRequestException,
   InternalServerErrorException,
   Logger,
-  Get,
   Query,
 } from '@nestjs/common';
 import { PaymobService } from './paymob.service';
 import { PaymentRequestDTO } from './dto/orderData';
-import { PaymentPostBodyCallback } from './types/callback';
 import { UsersService } from 'src/users/users.service';
 import { JwtAuthGuard } from 'src/auth/guard';
 import { Level_Name } from '../common/enums';
@@ -30,13 +28,14 @@ export class PaymobController {
   ) { }
 
   @Post('/callback')
-  async callbackPost(@Body() data: PaymentPostBodyCallback) {
+  async callbackPost(@Body() data: any, @Query() dataQuery: any) {
     const success = data.obj?.success;
     const orderId = data.obj?.id;
     const userEmail = data.obj?.order?.shipping_data.email;
 
 
-
+    this.logger.log(`dataBody ${JSON.stringify(data)}`);
+    this.logger.log(`dataQuery ${JSON.stringify(dataQuery)}`);
     try {
       const userData = await this.paymobService.handlePaymobCallback(
         orderId,
