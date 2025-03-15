@@ -193,6 +193,34 @@ class GRAMMAR {
   examples: Example[];
 }
 
+class PHRASAL_VERB {
+  @IsOptional()
+  @IsUUID()
+  @IsNotEmpty()
+  id?: string
+
+  @IsString()
+  @IsNotEmpty()
+  exampleAr: string;
+
+  @IsString()
+  @IsNotEmpty()
+  exampleEn: string;
+
+  @IsString()
+  @IsNotEmpty()
+  sentence: string;
+
+  @IsString()
+  @IsNotEmpty()
+  soundSrc: string;
+
+  @IsString()
+  @IsNotEmpty()
+  pictureSrc: string;
+
+}
+
 class DAILY_TEST {
   @IsOptional()
   @IsUUID()
@@ -234,7 +262,7 @@ class IDIOMS {
   @IsNotEmpty()
   pictureSrc: string;
 
- 
+
 }
 
 // Type-safe mapping from key to validation class
@@ -248,6 +276,7 @@ const validationMap: Record<LESSONS, ClassConstructor<any>> = {
   [LESSONS.GRAMMAR]: GRAMMAR,
   [LESSONS.DAILY_TEST]: DAILY_TEST,
   [LESSONS.IDIOMS]: IDIOMS,
+  [LESSONS.PHRASAL_VERB]: PHRASAL_VERB,
 };
 
 export async function validateData(
