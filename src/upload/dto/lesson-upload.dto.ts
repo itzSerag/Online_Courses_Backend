@@ -77,13 +77,9 @@ class WRITE {
   @IsNotEmpty()
   id?: string
 
-  @IsString()
+  @IsArray()
   @IsNotEmpty()
-  question: string;
-
-  @IsString()
-  @IsNotEmpty()
-  answer: string;
+  sentences: Array<string>; 
 }
 
 class PICTURES {
@@ -177,7 +173,6 @@ class GRAMMAR {
   @IsString()
   @IsNotEmpty()
   nameAr: string;
-
   @IsString()
   @IsNotEmpty()
   definition: string;
