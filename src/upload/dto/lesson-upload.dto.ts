@@ -193,7 +193,7 @@ class GRAMMAR {
   examples: Example[];
 }
 
-class PHRASAL_VERB {
+class PHRASAL_VERBS {
   @IsOptional()
   @IsUUID()
   @IsNotEmpty()
@@ -276,7 +276,7 @@ const validationMap: Record<LESSONS, ClassConstructor<any>> = {
   [LESSONS.GRAMMAR]: GRAMMAR,
   [LESSONS.DAILY_TEST]: DAILY_TEST,
   [LESSONS.IDIOMS]: IDIOMS,
-  [LESSONS.PHRASAL_VERB]: PHRASAL_VERB,
+  [LESSONS.PHRASAL_VERBS]: PHRASAL_VERBS,
 };
 
 export async function validateData(
