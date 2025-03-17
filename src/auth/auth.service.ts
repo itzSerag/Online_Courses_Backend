@@ -32,7 +32,7 @@ export class AuthService {
   private async validateUser(
     email: string,
     userPassword: string,
-  ): Promise<User> {
+  ) {
 
     try {
       const user = await this.userService.findByEmail(email);
@@ -55,14 +55,17 @@ export class AuthService {
 
       const jwt = await this.generateToken(payload);
 
-      if (!user.isVerified) {
-        throw new ForbiddenException({
-          message: 'Please verify your account by entering the OTP',
-          access_token: jwt,
-        });
-      }
+      // if (!user.isVerified) {
+      //   throw new ForbiddenException({
+      //     message: 'Please verify your account by entering the OTP',
+      //     access_token: jwt,
+      //   });
+      // }
 
-      return this.sanitizedUser(user);
+      return {
+        user: await this.sanitizedUser(user),
+        access_token: jwt
+      }
 
     } catch (error) {
       if (error instanceof ForbiddenException) {
@@ -104,7 +107,7 @@ export class AuthService {
     newUser = await this.sanitizedUser(newUser);
     return {
       access_token: jwt,
-      newUser
+      user: newUser,
     };
   }
 
