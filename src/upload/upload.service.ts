@@ -11,11 +11,13 @@ import {
   InternalServerErrorException,
   NotAcceptableException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { UploadDTO, UploadFileDTO } from './dto';
 import { v4 as uuidv4 } from 'uuid';
 import { DeleteObjDTO } from './dto/delete-obj.dto';
+import * as NodeCache from 'node-cache';
 
 enum FileType {
   IMAGE = 'Images',
@@ -38,6 +40,8 @@ interface JsonFile {
 export class UploadService {
   private readonly s3Config: S3Config;
   private readonly s3Client: S3Client;
+  private readonly logger = new Logger(UploadService.name);
+  private readonly cache = new NodeCache({ stdTTL: 3600 }); // Cache for 1 hour
 
   constructor(private readonly configService: ConfigService) {
     this.s3Config = this.loadS3Configuration();
@@ -120,36 +124,8 @@ export class UploadService {
     }
   }
 
-  // async updateJsonDataArray(
-  //   uploadDTO: UploadDTO,
-  //   updatedDataObject: UploadDTO,
-  // ): Promise<void> {
-  //   const key = this.createJsonKey(uploadDTO);
-
-  //   try {
-  //     const jsonData = await this.getJsonFromS3(key, this.s3Config.bucket);
-
-  //     this.validateJsonDataArray(jsonData);
-
-  //     const index = jsonData.data.findIndex((item) => item.id === updatedDataObject.id);
-
-  //     if (index === -1) {
-  //       throw new NotFoundException(`Object with ID ${updatedDataObject.id} not found`);
-  //     }
-
-  //     jsonData.data[index] = updatedDataObject;
-
-  //     await this.updateJsonInS3(key, jsonData);
-  //   } catch (error) {
-  //     throw new InternalServerErrorException(
-  //       `Failed to update object in JSON data array: ${error.message}`,
-  //     );
-  //   }
-  // }
-
-
   async deleteFromJsonDataArray(
-    deleteObjDTO : DeleteObjDTO
+    deleteObjDTO: DeleteObjDTO
   ): Promise<void> {
     const { objectId, ...uploadDTO } = deleteObjDTO;
     const key = this.createJsonKey(uploadDTO);
@@ -207,7 +183,7 @@ export class UploadService {
     return await response.json();
   }
 
-  private createJsonKey(uploadDTO: UploadDTO   | UploadFileDTO ): string {
+  private createJsonKey(uploadDTO: UploadDTO | UploadFileDTO): string {
     return `Levels/${uploadDTO.level_name}/${uploadDTO.day}/${uploadDTO.lesson_name}.json`;
   }
 
@@ -260,13 +236,27 @@ export class UploadService {
     }
   }
 
-  private async getJsonFromS3(key: string, bucket: string): Promise<JsonFile> {
+  private async getJsonFromS3(key: string, bucket: string) {
     try {
+      // Check cache first
+      const cachedData = this.cache.get(key);
+      if (cachedData) {
+        this.logger.log(`Cache hit for key: ${key}`);
+        return cachedData;
+      }
+
       const command = new GetObjectCommand({ Bucket: bucket, Key: key });
       const response = await this.s3Client.send(command);
       const jsonString = await response.Body.transformToString();
-      return JSON.parse(jsonString);
+      const parsedData = JSON.parse(jsonString);
+
+      // Cache the result
+      this.cache.set(key, parsedData);
+      this.logger.log(`Cache set for key: ${key}`);
+
+      return parsedData;
     } catch (error) {
+      this.logger.error(`Failed to retrieve JSON: ${error.message}`);
       throw new InternalServerErrorException(`Failed to retrieve JSON: ${error.message}`);
     }
   }
@@ -282,7 +272,9 @@ export class UploadService {
       });
 
       await this.s3Client.send(command);
+      this.logger.log(`JSON updated successfully: ${key}`);
     } catch (error) {
+      this.logger.error(`Failed to update JSON: ${error.message}`);
       throw new InternalServerErrorException(`Failed to update JSON: ${error.message}`);
     }
   }
@@ -295,6 +287,7 @@ export class UploadService {
       const command = new GetObjectCommand({ Bucket: bucket, Key: key });
       return { url: await getSignedUrl(this.s3Client, command, { expiresIn: 86400 }) };
     } catch (err) {
+      this.logger.error(`Failed to get presigned URL: ${err.message}`);
       throw new NotFoundException('File not found');
     }
   }

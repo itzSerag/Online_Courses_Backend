@@ -1,28 +1,26 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { UploadModule } from './upload/upload.module';
 import { UsersModule } from './users/users.module';
-import { ConfigModule } from '@nestjs/config';
-import { AppController } from './app.controller';
-import { AuthController } from './auth/auth.controller';
-import { UsersController } from './users/users.controller';
 import { PaymentModule } from './payment/paymob.module';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
+    }),
     AuthModule,
     PrismaModule,
     UploadModule,
     UsersModule,
-    ConfigModule.forRoot({
-      isGlobal: true,
-    }),
     PaymentModule,
   ],
-  controllers: [AppController, AuthController, UsersController],
-
+  controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

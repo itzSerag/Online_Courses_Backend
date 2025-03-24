@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, ForbiddenException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, ConflictException, ForbiddenException, InternalServerErrorException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from 'src/users/users.service';
@@ -7,14 +7,18 @@ import { EmailService } from './auth.email.service';
 import { OtpService } from './auth.otp.service';
 import { User } from '@prisma/client';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly jwtService: JwtService,
     private readonly userService: UsersService,
     private readonly emailService: EmailService,
     private readonly otpService: OtpService,
+    private readonly configService: ConfigService,
   ) { }
 
   async isVerified(email: string) {
@@ -82,39 +86,64 @@ export class AuthService {
   @ApiResponse({ status: 201, description: 'User signed up successfully.' })
   @ApiResponse({ status: 409, description: 'User with this email already exists.' })
   async signup(user: SignUpDto) {
+    try {
+      const existingUser = await this.userService.findByEmail(user.email);
+      if (existingUser) {
+        throw new ConflictException('User with this email already exists');
+      }
 
-    const existingUser = await this.userService.findByEmail(user.email);
-    if (existingUser) {
-      throw new ConflictException('User with this email already exists');
+      const newUser = await this.userService.createUser(user);
+      const payload: PayLoad = {
+        email: newUser.email,
+        sub: newUser.id,
+        roles: newUser.role,
+      };
+
+      const jwt = await this.generateToken(payload);
+      this.logger.log(`User signed up successfully: ${newUser.email}`);
+
+      return {
+        access_token: jwt,
+        user: await this.sanitizedUser(newUser),
+      };
+    } catch (error) {
+      this.logger.error(`Signup failed: ${error.message}`);
+      throw error;
     }
-
-    let newUser = await this.userService.createUser(user);
-
-    const payload: PayLoad = {
-      email: newUser.email,
-      sub: newUser.id,
-      roles: newUser.role,
-    };
-
-    const jwt = await this.generateToken(payload);
-
-    // TODO : EMAIL SERVICE
-    //await this.generateOTP(user.email);
-    // await this.emailService.sendEmail(user.email, otp);
-
-
-    newUser = await this.sanitizedUser(newUser);
-    return {
-      access_token: jwt,
-      user: newUser,
-    };
   }
 
   @ApiOperation({ summary: 'Log in a user' })
   @ApiResponse({ status: 200, description: 'User logged in successfully.' })
   @ApiResponse({ status: 401, description: 'Invalid credentials.' })
   async login(userLoginDto: LoginDto): Promise<any> {
-    return await this.validateUser(userLoginDto.email, userLoginDto.password);
+    try {
+      const user = await this.userService.findByEmail(userLoginDto.email);
+      if (!user) {
+        throw new ForbiddenException('Invalid credentials');
+      }
+
+      const isPasswordValid = await bcrypt.compare(userLoginDto.password, user.password);
+      if (!isPasswordValid) {
+        throw new ForbiddenException('Invalid credentials');
+      }
+
+      const payload: PayLoad = {
+        email: user.email,
+        roles: user.role,
+        sub: user.id,
+      };
+
+      const jwt = await this.generateToken(payload);
+      this.logger.log(`User logged in successfully: ${user.email}`);
+
+      return {
+        user: await this.sanitizedUser(user),
+        access_token: jwt,
+      };
+    } catch (error) {
+      this.logger.error(`Login failed: ${error.message}`);
+      throw error;
+    }
   };
 
   @ApiOperation({ summary: 'Reset user password' })
@@ -175,7 +204,10 @@ export class AuthService {
   }
 
   async generateToken(user: PayLoad) {
-    return this.jwtService.sign(user);
+    return this.jwtService.sign(user, {
+      secret: this.configService.get<string>('JWT_SECRET'),
+      expiresIn: '60d',
+    });
   }
 
   @ApiOperation({ summary: 'Verify OTP for user account' })
