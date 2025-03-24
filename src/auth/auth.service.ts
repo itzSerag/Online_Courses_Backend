@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  ConflictException,
-  ForbiddenException,
-  InternalServerErrorException,
-} from '@nestjs/common';
+import { Injectable, ConflictException, ForbiddenException, InternalServerErrorException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from 'src/users/users.service';
@@ -11,6 +6,7 @@ import { LoginDto, PayLoad, SignUpDto } from './dto';
 import { EmailService } from './auth.email.service';
 import { OtpService } from './auth.otp.service';
 import { User } from '@prisma/client';
+import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @Injectable()
 export class AuthService {
@@ -82,6 +78,9 @@ export class AuthService {
     return otp;
   }
 
+  @ApiOperation({ summary: 'Sign up a new user' })
+  @ApiResponse({ status: 201, description: 'User signed up successfully.' })
+  @ApiResponse({ status: 409, description: 'User with this email already exists.' })
   async signup(user: SignUpDto) {
 
     const existingUser = await this.userService.findByEmail(user.email);
@@ -111,10 +110,16 @@ export class AuthService {
     };
   }
 
+  @ApiOperation({ summary: 'Log in a user' })
+  @ApiResponse({ status: 200, description: 'User logged in successfully.' })
+  @ApiResponse({ status: 401, description: 'Invalid credentials.' })
   async login(userLoginDto: LoginDto): Promise<any> {
     return await this.validateUser(userLoginDto.email, userLoginDto.password);
   };
 
+  @ApiOperation({ summary: 'Reset user password' })
+  @ApiResponse({ status: 200, description: 'Password reset successfully.' })
+  @ApiResponse({ status: 404, description: 'User not found.' })
   async resetPassword(email: string, password: string) {
     const user = await this.userService.findByEmail(email);
 
@@ -132,6 +137,8 @@ export class AuthService {
     }
   }
 
+  @ApiOperation({ summary: 'Resend OTP to the user' })
+  @ApiResponse({ status: 200, description: 'OTP sent successfully.' })
   async resendOtp(userEmail: string) {
 
     // delete the previous otp record
@@ -171,7 +178,9 @@ export class AuthService {
     return this.jwtService.sign(user);
   }
 
-  // verifying the otp service from db and get the email from the req.user
+  @ApiOperation({ summary: 'Verify OTP for user account' })
+  @ApiResponse({ status: 200, description: 'OTP verified successfully.' })
+  @ApiResponse({ status: 400, description: 'Invalid OTP.' })
   async verifyOtp(otp: string, user: any) {
     const otpRecord = await this.otpService.getOtp(user.email);
     const userRecord = await this.userService.findByEmail(user.email);
@@ -189,6 +198,8 @@ export class AuthService {
     return { message: 'OTP is correct', user: user };
   }
 
+  @ApiOperation({ summary: 'Log out the user' })
+  @ApiResponse({ status: 200, description: 'User logged out successfully.' })
   async logout() {
     // destroy the token
     return { message: 'Logged out successfully' };

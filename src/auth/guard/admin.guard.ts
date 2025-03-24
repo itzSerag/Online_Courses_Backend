@@ -9,7 +9,7 @@ import { Observable } from 'rxjs';
 
 @Injectable()
 export class AdminGuard implements CanActivate {
-  constructor(private reflector: Reflector) {}
+  constructor(private reflector: Reflector) { }
 
   canActivate(
     context: ExecutionContext,
@@ -20,6 +20,6 @@ export class AdminGuard implements CanActivate {
       return true;
     }
 
-    throw new UnauthorizedException();
+    throw new UnauthorizedException("You don't have permission to access");
   }
 }
