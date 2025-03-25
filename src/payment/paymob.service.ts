@@ -5,14 +5,12 @@ import {
   BadRequestException,
   InternalServerErrorException,
   NotFoundException,
-  UnauthorizedException,
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentRequest, PaymentStatus } from './types';
 import { Level_Name } from '../common/enums';
-import * as crypto from 'crypto';
 
 @Injectable()
 export class PaymobService {
