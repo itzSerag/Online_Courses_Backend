@@ -109,26 +109,21 @@ export class UsersService {
     }
   }
 
-  async deleteUser(id: number): Promise<User> {
-    try {
-      // First check if user exists
-      await this.findById(id);
+  async deleteUser(id: number, currentUserId: number): Promise<User> {
 
-      const user = await this.prisma.user.delete({
-        where: { id },
-      });
-
-      this.logger.log(`Deleted user with ID ${id}`);
-      return this.sanitizedUser(user);
-
-
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      this.logger.error(`Error deleting user: ${error.message}`, error.stack);
-      throw new InternalServerErrorException('Failed to delete user');
+    // remember the only admins can access this route so its totally safe
+    if (id === currentUserId) {
+      throw new BadRequestException('Admin cannot delete themselves');
     }
+    // First check if user exists
+    await this.findById(id);
+
+    const user = await this.prisma.user.delete({
+      where: { id },
+    });
+
+    this.logger.log(`Deleted user with ID ${id}`);
+    return this.sanitizedUser(user);
   }
 
   async verifyUser(email: string): Promise<User> {

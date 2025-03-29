@@ -105,12 +105,11 @@ export class UsersController {
 
   @Delete('/:id')
   @UseGuards(AdminGuard)
-  async deleteUser(@Param('id', ParseIntPipe) id: number) {
-    const user = await this.userService.findById(id);
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-    return this.userService.deleteUser(id);
+  async deleteUser(
+    @Param('id', ParseIntPipe) id: number,
+    @CurUser('id') currentUserId: number,
+  ) {
+    return this.userService.deleteUser(id, currentUserId);
   }
 
   @Post('/complete-day')
