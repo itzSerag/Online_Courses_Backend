@@ -106,7 +106,7 @@ export class PaymobService {
       body: JSON.stringify(paymentRequest),
     };
 
-    return this.fetchWithTimeout(url, options);
+    return await this.fetchWithTimeout(url, options);
   }
 
   async handlePaymobCallback(orderId: number, success: boolean, amount: number, userEmail: string): Promise<boolean> {
