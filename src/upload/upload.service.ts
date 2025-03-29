@@ -17,11 +17,10 @@ import { ConfigService } from '@nestjs/config';
 import { UploadDTO, UploadFileDTO } from './dto';
 import { v4 as uuidv4 } from 'uuid';
 import { DeleteObjDTO } from './dto/delete-obj.dto';
-import * as NodeCache from 'node-cache';
 
 enum FileType {
   IMAGE = 'Images',
-  AUDIO = 'Audio',
+  AUDIO = "Audio",
 }
 
 interface S3Config {
@@ -41,7 +40,6 @@ export class UploadService {
   private readonly s3Config: S3Config;
   private readonly s3Client: S3Client;
   private readonly logger = new Logger(UploadService.name);
-  private readonly cache = new NodeCache({ stdTTL: 3600 }); // Cache for 1 hour
 
   constructor(private readonly configService: ConfigService) {
     this.s3Config = this.loadS3Configuration();
@@ -238,23 +236,10 @@ export class UploadService {
 
   private async getJsonFromS3(key: string, bucket: string) {
     try {
-      // Check cache first
-      const cachedData = this.cache.get(key);
-      if (cachedData) {
-        this.logger.log(`Cache hit for key: ${key}`);
-        return cachedData;
-      }
-
       const command = new GetObjectCommand({ Bucket: bucket, Key: key });
       const response = await this.s3Client.send(command);
       const jsonString = await response.Body.transformToString();
-      const parsedData = JSON.parse(jsonString);
-
-      // Cache the result
-      this.cache.set(key, parsedData);
-      this.logger.log(`Cache set for key: ${key}`);
-
-      return parsedData;
+      return JSON.parse(jsonString);
     } catch (error) {
       this.logger.error(`Failed to retrieve JSON: ${error.message}`);
       throw new InternalServerErrorException(`Failed to retrieve JSON: ${error.message}`);
