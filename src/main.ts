@@ -10,7 +10,6 @@ async function bootstrap() {
   // Strengthened CORS policy
   app.enableCors({
     origin: '*',
-    credentials: true,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
     preflightContinue: false,
   })
