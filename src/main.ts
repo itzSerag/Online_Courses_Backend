@@ -9,11 +9,12 @@ async function bootstrap() {
 
   // Strengthened CORS policy
   app.enableCors({
-    origin: true,
+    origin: '*',
     credentials: true,
-    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     preflightContinue: false,
-  })
+    optionsSuccessStatus: 204
+  });
 
   app.use(express.json({ limit: '20mb' }));
   app.use(express.urlencoded({ extended: true, limit: '20mb' }));
