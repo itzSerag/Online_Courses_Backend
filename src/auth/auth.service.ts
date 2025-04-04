@@ -7,6 +7,7 @@ import { EmailService } from './auth.email.service';
 import { OtpService } from './auth.otp.service';
 import { User } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
+import { log } from 'console';
 
 @Injectable()
 export class AuthService {
@@ -75,7 +76,7 @@ export class AuthService {
   }
 
   /// UTILS -- generate and create otp
-  async generateOTP(email: string) {
+  private async generateOTP(email: string) {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     await this.otpService.createOtp(email, otp);
     return otp;
@@ -97,6 +98,13 @@ export class AuthService {
 
       const jwt = await this.generateToken(payload);
       this.logger.log(`User signed up successfully: ${newUser.email}`);
+
+      // SEND USER OTP 
+      const otp = await this.generateOTP(newUser.email);
+      // TODO : EMAIL SERVICE
+      const emailResponse = await this.emailService.sendEmail(user.email, otp);
+      log(emailResponse);
+
 
       return {
         access_token: jwt,
