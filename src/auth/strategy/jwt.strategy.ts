@@ -21,13 +21,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       if (!user) {
         throw new UnauthorizedException('User not found');
       }
-
-      if (!user.isVerified) {
-        throw new UnauthorizedException('User account is not verified');
-      }
-
       const { password, ...userWithoutPassword } = user;
+
       return userWithoutPassword;
+
+
     } catch (error) {
       if (error instanceof UnauthorizedException) {
         throw error;

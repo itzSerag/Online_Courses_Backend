@@ -41,7 +41,7 @@ export class AuthController {
   }
 
   @Post('resend-otp')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard) // Removed IsVerifiedGuard
   async resendOtp(@CurUser() user: User) {
     return this.authService.resendOtp(user.email);
   }
@@ -99,10 +99,9 @@ export class AuthController {
   }
 
   @Post('verify-otp')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard) // Removed IsVerifiedGuard
   async verifyOtp(@Body('otp') otp: string, @Req() req) {
     const result = await this.authService.verifyOtp(otp, req.user);
-
     return result;
   }
 

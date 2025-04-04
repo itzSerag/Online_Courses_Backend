@@ -166,7 +166,7 @@ export class AuthService {
     //await this.generateOTP(userEmail);
     // log(emailResponse);
 
-    return { message: 'OTP sent successfully' };
+    return { message: 'OTP sent successfully - DEV MODE' };
   }
 
   async __findOrCreateOAuthUser(profile: any) {

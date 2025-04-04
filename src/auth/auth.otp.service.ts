@@ -1,12 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class OtpService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
-  async createOtp(email: string, otp: string) {
-    return this.prisma.oTP.upsert({
+  async createOtp(email: string, otp: string): Promise<void> {
+    await this.prisma.oTP.upsert({
       where: { email },
       update: { otp },
       create: { email, otp },
@@ -14,24 +14,30 @@ export class OtpService {
   }
 
   async verifyOtp(email: string, otp: string): Promise<boolean> {
-    const otpRecord = await this.prisma.oTP.findUnique({
+    const record = await this.prisma.oTP.findUnique({
       where: { email },
     });
 
-    return otpRecord?.otp === otp;
+    if (!record) return false;
+    return record.otp === otp;
   }
 
   async deleteOtp(email: string): Promise<void> {
-    await this.prisma.oTP.delete({
-      where: { email },
-    });
+    try {
+      await this.prisma.oTP.delete({
+        where: { email },
+      });
+    } catch (error) {
+      // If already deleted or not found, ignore
+    }
   }
 
   async getOtp(email: string): Promise<string> {
-    const otpRecord = await this.prisma.oTP.findUnique({
+    const record = await this.prisma.oTP.findUnique({
       where: { email },
     });
 
-    return otpRecord?.otp;
+    if (!record) throw new NotFoundException('OTP not found');
+    return record.otp;
   }
 }

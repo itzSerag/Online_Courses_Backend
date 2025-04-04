@@ -27,8 +27,8 @@ import { User } from '@prisma/client';
 export class UsersController {
   constructor(private readonly userService: UsersService) { }
 
-  @Get('/me')
-  getMe(@CurUser() user: User): User {
+  @Get('me')
+  async getMe(@CurUser() user: User): Promise<User> {
     return user;
   }
 
@@ -42,19 +42,19 @@ export class UsersController {
     return user;
   }
 
-  @Get('/all')
+  @Get('all')
   @UseGuards(AdminGuard)
   async getAllUsers(): Promise<User[]> {
     return this.userService.findAllUsers();
   }
 
-  @Get('/levels')
+  @Get('levels')
   async getLevels(@CurUser('id') userId: number) {
     const orders = await this.userService.getUserCompletedOrders(userId);
     return orders.map((order) => order.levelName);
   }
 
-  @Get('/completed-days')
+  @Get('completed-days')
   async getCompletedDaysInLevel(
     @Query(ValidationPipe) dto: GetCompletedDaysDto,
     @CurUser('id') userId: number,
@@ -62,7 +62,7 @@ export class UsersController {
     return this.userService.getCompletedDaysInLevel(userId, dto.levelName);
   }
 
-  @Get('/completed-tasks')
+  @Get('completed-tasks')
   async getCompletedTasksInDay(
     @Query(ValidationPipe) dto: GetCompletedTasksDto,
     @CurUser('id') userId: number,
@@ -80,7 +80,7 @@ export class UsersController {
     return this.userService.createUser(createUserDto);
   }
 
-  @Get('/:id')
+  @Get(':id')
   @UseGuards(AdminGuard)
   async getUserById(@Param('id', ParseIntPipe) id: number): Promise<User> {
     const user = await this.userService.findById(id);
@@ -90,7 +90,7 @@ export class UsersController {
     return user;
   }
 
-  @Put('/:id')
+  @Put(':id')
   @UseGuards(AdminGuard)
   async updateUser(
     @Param('id', ParseIntPipe) id: number,
@@ -103,7 +103,7 @@ export class UsersController {
     return this.userService.updateUser(id, updateUserDto);
   }
 
-  @Delete('/:id')
+  @Delete(':id')
   @UseGuards(AdminGuard)
   async deleteUser(
     @Param('id', ParseIntPipe) id: number,
@@ -112,7 +112,7 @@ export class UsersController {
     return this.userService.deleteUser(id, currentUserId);
   }
 
-  @Post('/complete-day')
+  @Post('complete-day')
   async markDayAsCompleted(
     @Body(ValidationPipe) finishDayDto: UserFinishDayDto,
     @CurUser('id') userId: number,
@@ -131,7 +131,7 @@ export class UsersController {
     }
   }
 
-  @Post('/complete-task')
+  @Post('complete-task')
   async markTaskAsCompleted(
     @Body(ValidationPipe) taskDto: UserTaskDto,
     @CurUser('id') userId: number,
