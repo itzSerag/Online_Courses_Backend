@@ -3,7 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class OtpService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async createOtp(email: string, otp: string) {
     return this.prisma.oTP.upsert({
@@ -22,7 +22,7 @@ export class OtpService {
   }
 
   async deleteOtp(email: string): Promise<void> {
-    await this.prisma.oTP.delete({
+    await this.prisma.oTP.deleteMany({
       where: { email },
     });
   }
@@ -34,4 +34,6 @@ export class OtpService {
 
     return otpRecord?.otp;
   }
+
+
 }

@@ -7,6 +7,7 @@ import { EmailService } from './auth.email.service';
 import { OtpService } from './auth.otp.service';
 import { User } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
+import { log } from 'console';
 
 @Injectable()
 export class AuthService {
@@ -28,54 +29,54 @@ export class AuthService {
     return false;
   }
 
-  private async validateUser(
-    email: string,
-    userPassword: string,
-  ) {
+  // private async validateUser(
+  //   email: string,
+  //   userPassword: string,
+  // ) {
 
-    try {
-      const user = await this.userService.findByEmail(email);
+  //   try {
+  //     const user = await this.userService.findByEmail(email);
 
-      if (!user) {
-        return null;
-      }
+  //     if (!user) {
+  //       return null;
+  //     }
 
-      const isPasswordValid = await bcrypt.compare(userPassword, user.password);
+  //     const isPasswordValid = await bcrypt.compare(userPassword, user.password);
 
-      if (!isPasswordValid) {
-        return null;
-      }
+  //     if (!isPasswordValid) {
+  //       return null;
+  //     }
 
-      const payload: PayLoad = {
-        email: user.email,
-        roles: user.role,
-        sub: user.id,
-      };
+  //     const payload: PayLoad = {
+  //       email: user.email,
+  //       roles: user.role,
+  //       sub: user.id,
+  //     };
 
-      const jwt = await this.generateToken(payload);
+  //     const jwt = await this.generateToken(payload);
 
-      // if (!user.isVerified) {
-      //   throw new ForbiddenException({
-      //     message: 'Please verify your account by entering the OTP',
-      //     access_token: jwt,
-      //   });
-      // }
+  //     // if (!user.isVerified) {
+  //     //   throw new ForbiddenException({
+  //     //     message: 'Please verify your account by entering the OTP',
+  //     //     access_token: jwt,
+  //     //   });
+  //     // }
 
-      return {
-        user: await this.sanitizedUser(user),
-        access_token: jwt
-      }
+  //     return {
+  //       user: await this.sanitizedUser(user),
+  //       access_token: jwt
+  //     }
 
-    } catch (error) {
-      if (error instanceof ForbiddenException) {
-        throw error;
-      }
-      throw new InternalServerErrorException('Authentication failed');
-    }
-  }
+  //   } catch (error) {
+  //     if (error instanceof ForbiddenException) {
+  //       throw error;
+  //     }
+  //     throw new InternalServerErrorException('Authentication failed');
+  //   }
+  // }
 
   /// UTILS -- generate and create otp
-  async generateOTP(email: string) {
+  private async generateOTP(email: string) {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     await this.otpService.createOtp(email, otp);
     return otp;
@@ -97,6 +98,13 @@ export class AuthService {
 
       const jwt = await this.generateToken(payload);
       this.logger.log(`User signed up successfully: ${newUser.email}`);
+
+      // SEND USER OTP 
+      const otp = await this.generateOTP(newUser.email);
+      // TODO : EMAIL SERVICE
+      const emailResponse = await this.emailService.sendEmail(user.email, otp);
+      log(emailResponse);
+
 
       return {
         access_token: jwt,
@@ -160,13 +168,14 @@ export class AuthService {
 
     // delete the previous otp record
     await this.otpService.deleteOtp(userEmail);
+    const otp = await this.generateOTP(userEmail);
 
-    // TODO : EMAIL SERVICE
-    // const emailResponse = await this.emailService.sendEmail(email, otp);
-    //await this.generateOTP(userEmail);
-    // log(emailResponse);
+    const emailResponse = await this.emailService.sendEmail(userEmail, otp);
+    await this.generateOTP(userEmail);
 
-    return { message: 'OTP sent successfully' };
+    log(emailResponse);
+
+    return { message: 'OTP sent successfully - DEV MODE' };
   }
 
   async __findOrCreateOAuthUser(profile: any) {
